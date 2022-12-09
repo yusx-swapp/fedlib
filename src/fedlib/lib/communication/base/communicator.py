@@ -1,5 +1,5 @@
 from typing import TypeVar
-from ...clients import Client
+from ...client import Client
 class communicator:
 
     def __init__(self) -> None:

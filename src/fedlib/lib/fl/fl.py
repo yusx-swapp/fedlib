@@ -13,7 +13,7 @@ from ..kd.distillate import Distiller
 from ..kd import client_dml, emsemble_distillate
 from ..ensemble import AvgEnsemble
 import torch.nn as nn
-from ..clients import Client
+from ..client import Client
 from .server import Server
 
 
