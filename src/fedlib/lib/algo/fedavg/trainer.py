@@ -12,7 +12,7 @@ class Trainer:
         criterion = kwargs["criterion"]
         optimizer = kwargs["optimizer"]
         epochs = kwargs["epochs"]
-        data_loader = kwargs["data_loader"]
+        dataloader = kwargs["dataloader"]
         
         model.to(device)
         model.train()
@@ -20,7 +20,7 @@ class Trainer:
         epoch_loss = []
         for epoch in range(epochs):
             batch_loss = []
-            for batch_idx, (x, labels) in enumerate(data_loader):
+            for batch_idx, (x, labels) in enumerate(dataloader):
                 x, labels = x.to(device), labels.to(device)
                 model.zero_grad()
                 log_probs = model(x)
