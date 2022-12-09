@@ -533,7 +533,7 @@ def get_client_dataloader(dataset, datadir, train_bs, test_bs, dataidxs=None, no
         #     train_ds = dl_obj(datadir, dataidxs=dataidxs, train=True, transform=transform_train, download=True)
         #     test_ds = dl_obj(datadir, train=False, transform=transform_test, download=True)
         data_loaders = []
-        for dataid in dataidxs:
+        for key, dataid in dataidxs.items():
             
             train_ds = dl_obj(datadir, dataidxs=dataid, train=True, transform=transform_train, download=True)
         # test_ds = dl_obj(datadir, train=False, transform=transform_test, download=True)

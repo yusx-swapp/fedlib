@@ -59,7 +59,7 @@ class Server:
     
 
     def eval(self):
-        self._trainer.test()
+        self._trainer.test(self._global_model,self._test_dataset, self._device)
 
     def save_ckpt(self):
         pass
