@@ -2,27 +2,30 @@ from abc import abstractmethod
 
 
 class Server:
-    def __init__(self,**kwargs) -> None:
+    def __init__(self,**kwargs):
         self._n_clients = kwargs["n_clients"]
         self._global_model = kwargs["global_model"]
         self._device = kwargs["device"]
         self._sample_fn = kwargs["sample_fn"]
-        self._aggregate_fn = kwargs["aggregate_fn"]
+        # self._aggregate_fn = kwargs["aggregate_fn"]
         self._trainer = kwargs["trainer"]
-        self._communication_fn = kwargs["communication_fn"]
+        self._communicator = kwargs["communicator"]
 
         self._test_dataset = kwargs["test_dataset"]
         '''initialize key pair'''
         self._key_generator()
     
+    #ToDo communicator
     def _communication(self):
-        self._communication_fn()
+        self._communicator.communicate_fn()
+        pass
     
     def _aggregate(self,**kwargs):
-        self._trainer.aggregate(kwargs)
+        global_params = self._trainer.aggregate(kwargs)
+        self.set_global_model_params(global_params)
 
-    def _server_update(self, **kwargs):
-        self._aggregate(self.communication())
+    def server_update(self, **kwargs):
+        self._aggregate(**kwargs)
     
     @abstractmethod
     def server_run(self, test_gap=1):
@@ -39,7 +42,7 @@ class Server:
         pass
    
     def client_sample(self, **kwargs):
-        self._sample_fn(kwargs)
+        return self._sample_fn(**kwargs)
 
 
     def get_global_model(self):
@@ -55,7 +58,7 @@ class Server:
         self._global_model.load_state_dict(model_parameters)
     
 
-    def _validate(self):
+    def eval(self):
         self._trainer.test()
 
     def save_ckpt(self):
@@ -81,4 +84,7 @@ class Server:
 
     def _key_generator(self):
         #self._public_key, self._private_key = None, None
+        pass
+
+    def to(self,device):
         pass

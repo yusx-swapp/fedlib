@@ -1,37 +1,47 @@
 from abc import ABC, abstractmethod
 from http import client
-
+import torch
 
 class Client:
     def __init__(self, **kwargs) -> None:
         self.id = kwargs["id"]
 
         self._model = kwargs["model"]
-        self._dataloader = kwargs["dataloader"]
+        self._trainloader = kwargs["trainloader"]
+        self._lr = kwargs["lr"]
 
-        self.datasize = len(self._dataloader.dataset)
-        
+        self.datasize = len(self._trainloader.dataset)
+
         self._trainer = kwargs["trainer"]
         self._device = kwargs["device"]
-        self._communication_fn = kwargs["communication_fn"]
-
+        self._communicator = kwargs["communicator"]
+        if kwargs["optimizer"] == "SGD":
+            self.optimizer = torch.optim.SGD(self._model.parameters(), self._lr)
+        else:
+            raise KeyError("currently only support SGD")
+        
+        if kwargs["lr_scheduler"] == "ExponentialLR":
+            self.scheduler = torch.optim.lr_scheduler.ExponentialLR(self.optimizer, gamma=0.9)
+        else:
+            raise KeyError
     def _communication(self):
-        self._communication_fn()
+        self._communicator.communication()
     
     def client_update(self,**kwargs):
         
 
-        kwargs["dataset"] = self._model
+        kwargs["dataloader"] = self._trainloader
         kwargs["device"] = self._device
-        kwargs["model"] = self._model               
-        self._trainer.train(kwargs)
+        kwargs["model"] = self._model   
+        kwargs["optimizer"] = self.optimizer           
+        self._trainer.train(**kwargs)
     
     @abstractmethod
     def client_run(self, **kwargs):
         self._communication()
         # logger.info("Training network %s. n_training: %d" % (str(net_id), len(dataidxs)))
 
-        self._client_update(kwargs)
+        self.client_update(**kwargs)
         self._communication(self)
 
     def get_model(self):
@@ -52,7 +62,7 @@ class Client:
     def set_dataset(self, dataset):
         self._dataset = dataset
 
-    def _validate(self):
+    def eval(self):
         self._trainer.test()
 
     def save_ckpt(self):
@@ -72,4 +82,7 @@ class Client:
 
     def _key_generator(self):
         #self._public_key, self._private_key = None, None
+        pass
+
+    def to(self, device):
         pass

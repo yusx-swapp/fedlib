@@ -1,7 +1,9 @@
 import torch
 from torch import nn
 
+from ....utils import get_logger
 
+logger = get_logger()
 
 class Trainer:
 
@@ -31,13 +33,13 @@ class Trainer:
                 # torch.nn.utils.clip_grad_norm_(self.model.parameters(), 0.5)
 
                 optimizer.step()
-                # logging.info('Update Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                #     epoch, (batch_idx + 1) * self.args.batch_size, len(self.local_training_data) * self.args.batch_size,
-                #            100. * (batch_idx + 1) / len(self.local_training_data), loss.item()))
+                if batch_idx % 10 == 0:
+                    logger.info('Update Epoch: {} \tLoss: {:.6f}'.format(
+                        epoch,  loss.item()))
                 batch_loss.append(loss.item())
             epoch_loss.append(sum(batch_loss) / len(batch_loss))
-            # logging.info('Client Index = {}\tEpoch: {}\tLoss: {:.6f}'.format(
-            #     self.client_idx, epoch, sum(epoch_loss) / len(epoch_loss)))
+            logger.info('Epoch: {}\tLoss: {:.6f}'.format(
+                epoch, sum(epoch_loss) / len(epoch_loss)))
 
     def aggregate(self, **kwargs):        
             """fedavg aggregation
@@ -51,7 +53,7 @@ class Trainer:
             """
             nets_params = kwargs["nets_params"]
             local_datasize = kwargs["local_datasize"]
-            global_para = kwargs["global_para"]
+            global_model_param = kwargs["global_model_param"]
 
             total_data_points = sum(local_datasize)
             fed_avg_freqs = [size/ total_data_points for size in local_datasize]
@@ -60,12 +62,12 @@ class Trainer:
             for idx, net_para in enumerate(nets_params):
                 if idx == 0:
                     for key in net_para:
-                        global_para[key] = net_para[key] * fed_avg_freqs[idx]
+                        global_model_param[key] = net_para[key] * fed_avg_freqs[idx]
                 else:
                     for key in net_para:
-                        global_para[key] += net_para[key] * fed_avg_freqs[idx]
+                        global_model_param[key] += net_para[key] * fed_avg_freqs[idx]
 
-            return global_para
+            return global_model_param
 
     def test(self, test_data, device, args):
         

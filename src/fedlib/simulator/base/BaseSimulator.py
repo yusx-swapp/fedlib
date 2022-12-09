@@ -1,20 +1,9 @@
-import copy
-
-import torch
-from sklearn.metrics import confusion_matrix
-from torch import optim
-import numpy as np
-import os
-# from .. import compute_acc
-from .. import get_dataloader
-import torch.nn as nn
-from cmath import inf
-from copy import deepcopy
-from typing import List
+from typing import Dict
 from ...lib.server import Server
 from ...lib.client import Client
-class simulator:
-    def __init__(self, server: Server, clients: List[Client], communication_rounds:int) -> None:
+from ...utils import get_logger
+class BaseSimulator:
+    def __init__(self, server: Server, clients: Dict[int, Client], communication_rounds:int, n_clients: int, sample_rate:float) -> None:
         """_summary_
 
         Args:
@@ -26,14 +15,39 @@ class simulator:
         self.server = server
         self.clients = clients
         self.communication_rounds = communication_rounds
-        self.device = None
-        self.optimizer = None
+        
+        self.n_clients = n_clients
+        self.sample_rate = sample_rate
+        self.logger = get_logger()
+
+
+    #Todo initialize by configuration
     def init_config(self) -> None:
         pass
 
-    def run(self):
-        for round in self.communication_rounds:
-            global_model_param = self.server.get_global_model_params
-            for client in self.clients:
+    def run(self,criterion,local_epochs):
+        selected = self.server.client_sample(n_clients= self.n_clients, sample_rate=self.sample_rate)
+        
+        for round in range(self.communication_rounds):
+            global_model_param = self.server.get_global_model_params()
+            nets_params = []
+            locals_datasize = []
+            self.logger.info('*******starting rounds %s optimization******' % str(round+1))
+
+            for id in selected:
+                self.logger.info('optimize the %s-th clients' % str(id))
+                client = self.clients[id]
+                if id != client.id:
+                    raise IndexError("id not match")
+                
                 client.set_model_params(global_model_param)
-                client.client_update(optimizer=self.optimizer, criterion = self.criterion, decive = self.device)
+                client.client_update(criterion=criterion, epochs=local_epochs)
+                
+                nets_params.append(client.get_model_params())
+                locals_datasize.append(client.datasize)
+
+            self.server.server_update(nets_params=nets_params, locals_datasize=locals_datasize,global_model_param= global_model_param)
+            self.server.eval()
+
+
+    
