@@ -31,7 +31,7 @@ class BaseSimulator:
         for round in range(self.communication_rounds):
             global_model_param = self.server.get_global_model_params()
             nets_params = []
-            locals_datasize = []
+            local_datasize = []
             self.logger.info('*******starting rounds %s optimization******' % str(round+1))
 
             for id in selected:
@@ -44,9 +44,9 @@ class BaseSimulator:
                 client.client_update(criterion=criterion, epochs=local_epochs)
                 
                 nets_params.append(client.get_model_params())
-                locals_datasize.append(client.datasize)
+                local_datasize.append(client.datasize)
 
-            self.server.server_update(nets_params=nets_params, locals_datasize=locals_datasize,global_model_param= global_model_param)
+            self.server.server_update(nets_params=nets_params, local_datasize=local_datasize,global_model_param= global_model_param)
             self.server.eval()
 
 

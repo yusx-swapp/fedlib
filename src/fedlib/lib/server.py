@@ -21,7 +21,7 @@ class Server:
         pass
     
     def _aggregate(self,**kwargs):
-        global_params = self._trainer.aggregate(kwargs)
+        global_params = self._trainer.aggregate(**kwargs)
         self.set_global_model_params(global_params)
 
     def server_update(self, **kwargs):
