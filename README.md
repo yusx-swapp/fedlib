@@ -55,17 +55,21 @@ Every project is different, so consider which of these sections apply to yours. 
 Development of Privacy-aware federated learning software
 
 ## Problem definition
-Running Federated learning algrithms requires considerable efforts tp seeting up the hardware and software dependencies. We will develop a user friendly fedrated learning platform to help no programming background researchers run and test. 
+Running Federated learning algrithms requires considerable efforts tp seting up the hardware and software dependencies. We will develop a user friendly fedrated learning platform to help no programming background researchers run and test. 
 
 ## Conceptual Design
 ![Settings Window](https://github.com/yusx-swapp/fedlib/blob/develop/src/image.png)
- 
+
+We design simulator with a virtual enviroment to simulate server and several clients with sokit encryption decryption communicator to implement different federated learning algrithms.
 ## Implementation description
-We have a general class Server,
-A general class for client, 
-An abstract class trainer for different Federated learning algorithm to train and aggregiate data
-An abstract class for secure communication between the server and clients, with the encryption and decryption functions
-An virtual environment simulate server and clients in Federatedd learning
+We have a general class Server:
+https://github.com/yusx-swapp/fedlib/blob/develop/src/fedlib/lib/server.py
+
+A general class for client: https://github.com/yusx-swapp/fedlib/blob/develop/src/fedlib/lib/client.py
+
+An abstract class trainer for different Federated learning algorithm to train and aggregiate data: https://github.com/yusx-swapp/fedlib/blob/develop/src/fedlib/lib/algo/fedavg/trainer.py
+An abstract class for secure communication between the server and clients, with the encryption and decryption functions: https://github.com/yusx-swapp/fedlib/blob/develop/src/fedlib/lib/communicator/base/communicator.py
+An virtual environment simulate server and clients in Federatedd learning: https://github.com/yusx-swapp/fedlib/blob/develop/src/fedlib/simulator/base/BaseSimulator.py
 
 ## Userguide Visuals
 Demo: https://github.com/yusx-swapp/fedlib/blob/develop/src/eval.ipynb 
