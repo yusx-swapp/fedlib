@@ -9,7 +9,7 @@ In ***fedlib***, we aim to provide federated learning engineers and developers a
 
 <!-- TODO: add image captions -->
 <p align="center">
-<img src="img/overview.svg" alt="design overview" width="500"/>
+<img src="docs/img/overview.svg" alt="design overview" width="500"/>
 </p>
 
 ## **Design Overview**
