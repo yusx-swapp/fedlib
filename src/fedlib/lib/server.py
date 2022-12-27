@@ -59,7 +59,7 @@ class Server:
 
     def set_global_model(self, model):
         self._global_model = model
-
+    
     def get_global_model_params(self):
         return self._global_model.cpu().state_dict()
 

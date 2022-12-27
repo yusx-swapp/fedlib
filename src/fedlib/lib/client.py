@@ -75,9 +75,15 @@ class Client:
     def get_model_params(self):
         return self._model.cpu().state_dict()
 
+    def get_model_encoder_params(self):
+        return self._model.encoder.cpu().state_dict()
+
     def set_model_params(self, model_parameters):
         self._model.load_state_dict(model_parameters)
     
+    def set_model_encoder_params(self,model_parameters):
+        self._model.encoder.load_state_dict(model_parameters)
+
     def get_dataset(self):
         return self._dataset
     
