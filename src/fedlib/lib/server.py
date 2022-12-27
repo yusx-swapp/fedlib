@@ -1,5 +1,5 @@
 from abc import abstractmethod
-
+from torch import nn
 
 class Server:
     def __init__(self,**kwargs):
@@ -15,6 +15,15 @@ class Server:
         '''initialize key pair'''
         self._key_generator()
     
+    def init(self, global_model: nn.Module, n_clients: int, device: str):
+        """_summary_
+
+        Args:
+            global_model (nn.Module): _description_
+            n_clients (int): _description_
+            device (str): _description_
+        """
+        pass
     #ToDo communicator
     def _communication(self):
         self._communicator.communicate_fn()

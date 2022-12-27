@@ -3,7 +3,6 @@ from copy import deepcopy
 from typing import List
 from ..nas import adjust_net_arc, ArcSampler
 
-
 class simulator(ABC):
     def __init__(self, config_client, config_server) -> None:
         super().__init__()

@@ -1,29 +1,28 @@
 import torch
 from torch import nn
-
-from ....utils import get_logger
-from ..base import BaseTrainer
+from torchvision import transforms
+from .....utils import get_logger
+from ...base import BaseTrainer
 logger = get_logger()
 
 class Trainer(BaseTrainer):
+    def __init__(self,logger=None) -> None:
+        super().__init__()
+        self.logger = logger
 
-    def train(self, model:nn.Module, dataloader , criterion, optimizer, epochs:int, device):
-        """_summary_
+
+    def train(self, model:nn.Module, decoder:nn.Modules, dataloader , criterion_pred, criterion_rep, optimizer, epochs:int, device):
+        """training an autoencoder 
 
         Args:
             model (nn.Module): _description_
+            decoder (nn.Modules): _description_
             dataloader (_type_): _description_
             criterion (_type_): _description_
             optimizer (_type_): _description_
             epochs (int): _description_
             device (_type_): _description_
         """
-        # model = kwargs["model"]
-        # device = kwargs["device"]
-        # criterion = kwargs["criterion"]
-        # optimizer = kwargs["optimizer"]
-        # epochs = kwargs["epochs"]
-        # dataloader = kwargs["dataloader"]
         
         model.to(device)
         model.train()
@@ -33,50 +32,70 @@ class Trainer(BaseTrainer):
             batch_loss = []
             for batch_idx, (x, labels) in enumerate(dataloader):
                 x, labels = x.to(device), labels.to(device)
+                
                 model.zero_grad()
-                log_probs = model(x)
-                loss = criterion(log_probs, labels)
+                
+                #TODO @Sixing Integrate the decoder to the model? Waq, I'll provide an API for this, you may run experiments and tested it.
+                representation = model.encoder(x)
+                pred_out = model.predictor(representation)
+                decodes_out = decoder(representation)
+
+                loss = criterion_pred(pred_out, labels)
+                loss += criterion_rep(decodes_out, x)
+
                 loss.backward()
 
                 # to avoid nan loss
                 # torch.nn.utils.clip_grad_norm_(self.model.parameters(), 0.5)
 
                 optimizer.step()
-                if batch_idx % 10 == 0:
-                    logger.info('Update Epoch: {} \tLoss: {:.6f}'.format(
-                        epoch,  loss.item()))
+                
+                if self.logger is not None:
+                    if batch_idx % 10 == 0:
+                        logger.info('Update Epoch: {} \tLoss: {:.6f}'.format(
+                            epoch,  loss.item()))
+                
                 batch_loss.append(loss.item())
+            
             epoch_loss.append(sum(batch_loss) / len(batch_loss))
-            logger.info('Epoch: {}\tLoss: {:.6f}'.format(
-                epoch, sum(epoch_loss) / len(epoch_loss)))
+            
+            if self.logger is not None:
+                logger.info('Epoch: {}\tLoss: {:.6f}'.format(
+                    epoch, sum(epoch_loss) / len(epoch_loss)))
 
-    def aggregate(self, **kwargs):        
+            #TODO @Sixing: Need add an argument `save_dir` to save the decoder img
+            # if epoch % 10 == 0:
+            #     pic = self._to_img(output.cpu().data)
+            #     from torchvision.utils import save_image
+            #     save_image(pic, './dc_img/image_{}.png'.format(epoch))
+
+    def aggregate(self, nets_encoders,local_datasize, globa_encoder ):        
             """fedavg aggregation
             kwargs:
-                nets_params: 
+                nets_encoders: 
                 local_datasize:
-                global_para: 
+                globa_encoder: 
 
             Returns:
-                global_para: _description_
+                globa_encoder: _description_
             """
-            nets_params = kwargs["nets_params"]
-            local_datasize = kwargs["local_datasize"]
-            global_model_param = kwargs["global_model_param"]
+            # nets_params = kwargs["nets_params"]
+            # local_datasize = kwargs["local_datasize"]
+            # global_model_param = kwargs["global_model_param"]
 
             total_data_points = sum(local_datasize)
             fed_avg_freqs = [size/ total_data_points for size in local_datasize]
             
             
-            for idx, net_para in enumerate(nets_params):
+            for idx, net_para in enumerate(nets_encoders):
                 if idx == 0:
                     for key in net_para:
-                        global_model_param[key] = net_para[key] * fed_avg_freqs[idx]
+                        globa_encoder[key] = net_para[key] * fed_avg_freqs[idx]
                 else:
                     for key in net_para:
-                        global_model_param[key] += net_para[key] * fed_avg_freqs[idx]
+                        globa_encoder[key] += net_para[key] * fed_avg_freqs[idx]
 
-            return global_model_param
+            return globa_encoder
 
     def test(self, model, test_data, device):
         
@@ -132,8 +151,21 @@ class Trainer(BaseTrainer):
                     metrics["test_total"] += target.size(0) * target.size(1)
         return metrics
 
-    def test_on_the_server(
-        self, train_data_local_dict, test_data_local_dict, device, args=None
-    ) -> bool:
+    def _to_img(self, img, transform = None):
+        if transforms is None:
+            transform = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Lambda(lambda x: torch.nn.functional.pad(
+                    torch.autograd.variable.Variable(x.unsqueeze(0), requires_grad=False),
+                    (4, 4, 4, 4), mode='reflect').data.squeeze()),
+                transforms.ToPILImage(),
+                transforms.RandomCrop(32, padding=4),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                # Phuong 09/26 change (mean, std) -> same as pretrained imagenet
+                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+                # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
 
-        return False
+            ])
+        return transform(img)
+

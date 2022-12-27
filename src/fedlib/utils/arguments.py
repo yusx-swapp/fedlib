@@ -8,7 +8,7 @@ import logging
 
 import yaml
 
-
+__all__ = ["load_arguments", "Arguments"]
 def add_args():
     parser = argparse.ArgumentParser(description="RaFL evaluation")
     parser.add_argument(

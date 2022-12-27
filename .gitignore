@@ -3,3 +3,10 @@
 src/data/*
 .vscode
 Docker/*
+src/debug/
+build/
+docs/plan.md
+*egg-info
+src/fedlib/lib/fl/*
+*ipynp_checkpoints*
+*code-workspace

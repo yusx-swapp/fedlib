@@ -11,25 +11,45 @@ class Client:
         self._lr = kwargs["lr"]
 
         self.datasize = len(self._trainloader.dataset)
-
         self._trainer = kwargs["trainer"]
         self._device = kwargs["device"]
         self._communicator = kwargs["communicator"]
-        if kwargs["optimizer"] == "SGD":
+        
+        self.criterion = kwargs["criterion"]
+        self._init_optimizer()
+        self._init_lr_schedular()
+        
+
+    def _init_optimizer(self,optimizer_name:str) -> None:
+        """_summary_
+
+        Args:
+            optmizer_name (str): _description_
+        """
+        if optimizer_name.lower() == "sgd":
             self.optimizer = torch.optim.SGD(self._model.parameters(), self._lr)
         else:
             raise KeyError("currently only support SGD")
-        
-        if kwargs["lr_scheduler"] == "ExponentialLR":
+
+    def _init_lr_schedular(self,lr_scheduler_name:str) -> None:
+        """_summary_
+
+        Args:
+            lr_scheduler_name (str): _description_
+
+        Raises:
+            KeyError: _description_
+        """
+        if lr_scheduler_name.lower() == "exponentiallr": #ExponentialLR
             self.scheduler = torch.optim.lr_scheduler.ExponentialLR(self.optimizer, gamma=0.9)
         else:
             raise KeyError
+
+
     def _communication(self):
         self._communicator.communication()
     
     def client_update(self,**kwargs):
-        
-
         kwargs["dataloader"] = self._trainloader
         kwargs["device"] = self._device
         kwargs["model"] = self._model   
@@ -38,11 +58,13 @@ class Client:
     
     @abstractmethod
     def client_run(self, **kwargs):
-        self._communication()
-        # logger.info("Training network %s. n_training: %d" % (str(net_id), len(dataidxs)))
+        pass
+        # Some pseudo code idea:
+        # self._communication()
+        # # logger.info("Training network %s. n_training: %d" % (str(net_id), len(dataidxs)))
 
-        self.client_update(**kwargs)
-        self._communication(self)
+        # self.client_update(**kwargs)
+        # self._communication(self)
 
     def get_model(self):
         return self._model

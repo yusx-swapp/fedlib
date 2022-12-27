@@ -25,7 +25,7 @@ class BaseSimulator:
     def init_config(self) -> None:
         pass
 
-    def run(self,criterion,local_epochs):
+    def run(self,local_epochs):
         selected = self.server.client_sample(n_clients= self.n_clients, sample_rate=self.sample_rate)
         
         for round in range(self.communication_rounds):
@@ -41,7 +41,7 @@ class BaseSimulator:
                     raise IndexError("id not match")
                 
                 client.set_model_params(global_model_param)
-                client.client_update(criterion=criterion, epochs=local_epochs)
+                client.client_update( epochs=local_epochs)
                 
                 nets_params.append(client.get_model_params())
                 local_datasize.append(client.datasize)
@@ -50,4 +50,3 @@ class BaseSimulator:
             self.server.eval()
 
 
-    
