@@ -39,8 +39,10 @@ class MTFLEnv:
         
         for round in range(self.communication_rounds):
             selected = self.server.client_sample(n_clients= self.n_clients, sample_rate=self.sample_rate)
-            global_model_param = self.server.get_global_model_params()
-            nets_params = []
+            
+            globa_encoder = self.server.get_global_model_params()
+            
+            nets_encoders = []
             local_datasize = []
             self.logger.info('*******starting rounds %s optimization******' % str(round+1))
 
@@ -50,13 +52,13 @@ class MTFLEnv:
                 if id != client.id:
                     raise IndexError("id not match")
                 
-                client.set_model_params(global_model_param, module_name="encoder")
+                client.set_model_params(globa_encoder, module_name="encoder")
                 client.client_update( epochs=local_epochs)
                 
-                nets_params.append(client.get_model_params(module_name="encoder"))
+                nets_encoders.append(client.get_model_params(module_name="encoder"))
                 local_datasize.append(client.datasize)
 
-            self.server.server_update(nets_params=nets_params, local_datasize=local_datasize,global_model_param= global_model_param)
-            self.server.eval()
+            self.server.server_update(nets_encoders=nets_encoders, local_datasize=local_datasize,globa_encoder= globa_encoder)
+            # self.server.eval()
 
 

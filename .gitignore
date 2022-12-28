@@ -10,3 +10,4 @@ docs/plan.md
 src/fedlib/lib/fl/*
 *ipynp_checkpoints*
 *code-workspace
+demo/data/*

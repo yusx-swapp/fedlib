@@ -11,7 +11,7 @@ class Trainer(BaseTrainer):
         self.logger = logger
 
 
-    def train(self, model:nn.Module, decoder:nn.Modules, dataloader , criterion_pred, criterion_rep, optimizer, epochs:int, device):
+    def train(self, model:nn.Module, dataloader , criterion, optimizer, epochs:int, device):
         """training an autoencoder 
 
         Args:
@@ -26,7 +26,7 @@ class Trainer(BaseTrainer):
         
         model.to(device)
         model.train()
-
+        criterion_pred, criterion_rep = criterion["criterion_pred"], criterion["criterion_rep"]
         epoch_loss = []
         for epoch in range(epochs):
             batch_loss = []
@@ -37,8 +37,8 @@ class Trainer(BaseTrainer):
                 
                 #TODO @Sixing Integrate the decoder to the model? Waq, I'll provide an API for this, you may run experiments and tested it.
                 representation = model.encoder(x)
-                pred_out = model.predictor(representation)
-                decodes_out = decoder(representation)
+                pred_out = model(x)
+                decodes_out = model.decoder(representation)
 
                 loss = criterion_pred(pred_out, labels)
                 loss += criterion_rep(decodes_out, x)

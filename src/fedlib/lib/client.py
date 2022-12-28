@@ -4,8 +4,15 @@ import torch
 
 class Client:
     def __init__(self, **kwargs) -> None:
-        self.id = kwargs["id"]
+        
+        
+        """        
+        # TODO: private variables
+        for key, val in kwargs:
+            setattr(self, key, val)
+        """
 
+        self.id = kwargs["id"]
         self._model = kwargs["model"]
         self._trainloader = kwargs["trainloader"]
         self._lr = kwargs["lr"]
@@ -16,8 +23,8 @@ class Client:
         self._communicator = kwargs["communicator"]
         
         self.criterion = kwargs["criterion"]
-        self._init_optimizer()
-        self._init_lr_schedular()
+        self._init_optimizer(kwargs["optimizer"])
+        self._init_lr_schedular(kwargs["lr_scheduler"])
         
 
     def _init_optimizer(self,optimizer_name:str) -> None:
@@ -53,7 +60,9 @@ class Client:
         kwargs["dataloader"] = self._trainloader
         kwargs["device"] = self._device
         kwargs["model"] = self._model   
-        kwargs["optimizer"] = self.optimizer           
+        kwargs["optimizer"] = self.optimizer
+        kwargs["criterion"] = self.criterion
+
         self._trainer.train(**kwargs)
     
     @abstractmethod
