@@ -72,17 +72,30 @@ class Client:
     def set_model(self, model):
         self._model = model
 
-    def get_model_params(self):
+    def get_model_params(self, module_name=None):
+        
+        if module_name is not None:
+            try:
+                return self._model.get_submodule(module_name).cpu().state_dict()
+            except:
+                raise KeyError("Module Not Exists")
+
         return self._model.cpu().state_dict()
 
-    def get_model_encoder_params(self):
-        return self._model.encoder.cpu().state_dict()
 
-    def set_model_params(self, model_parameters):
-        self._model.load_state_dict(model_parameters)
     
-    def set_model_encoder_params(self,model_parameters):
-        self._model.encoder.load_state_dict(model_parameters)
+    def set_model_params(self, model_parameters,module_name=None):
+        
+        if module_name is not None:
+            try:
+                self._model.get_submodule(module_name).load_state_dict(model_parameters)
+            except:
+                raise KeyError("Module Not Exists")
+        
+        else:
+            self._model.load_state_dict(model_parameters)
+
+    
 
     def get_dataset(self):
         return self._dataset

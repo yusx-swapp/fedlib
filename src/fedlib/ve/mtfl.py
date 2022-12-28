@@ -1,8 +1,9 @@
 from typing import Dict
-from ...server import Server
-from ...client import Client
-from ....utils import get_logger
-class Simulator:
+from ..lib.server import Server
+from ..lib.client import Client
+from ..utils import get_logger
+
+class MTFLEnv:
     def __init__(self, server: Server, clients: Dict[int, Client], communication_rounds:int, n_clients: int, sample_rate:float) -> None:
         """_summary_
 
@@ -25,10 +26,19 @@ class Simulator:
     def init_config(self) -> None:
         pass
 
+    # TODO initilize server
+    def init_server(self) -> None:
+        pass
+    
+    # TODO initilize clients
+    def init_clients(self) -> None:
+        pass
+
+
     def run(self,local_epochs):
-        selected = self.server.client_sample(n_clients= self.n_clients, sample_rate=self.sample_rate)
         
         for round in range(self.communication_rounds):
+            selected = self.server.client_sample(n_clients= self.n_clients, sample_rate=self.sample_rate)
             global_model_param = self.server.get_global_model_params()
             nets_params = []
             local_datasize = []
@@ -40,10 +50,10 @@ class Simulator:
                 if id != client.id:
                     raise IndexError("id not match")
                 
-                client.set_model_encoder_params(global_model_param)
+                client.set_model_params(global_model_param, module_name="encoder")
                 client.client_update( epochs=local_epochs)
                 
-                nets_params.append(client.get_model_encoder_params())
+                nets_params.append(client.get_model_params(module_name="encoder"))
                 local_datasize.append(client.datasize)
 
             self.server.server_update(nets_params=nets_params, local_datasize=local_datasize,global_model_param= global_model_param)
