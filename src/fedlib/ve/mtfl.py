@@ -54,11 +54,10 @@ class MTFLEnv:
                 
                 client.set_model_params(globa_encoder, module_name="encoder")
                 client.client_update( epochs=local_epochs)
+                client.eval()
                 
                 nets_encoders.append(client.get_model_params(module_name="encoder"))
                 local_datasize.append(client.datasize)
 
             self.server.server_update(nets_encoders=nets_encoders, local_datasize=local_datasize,globa_encoder= globa_encoder)
             # self.server.eval()
-
-

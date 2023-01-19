@@ -36,7 +36,7 @@ class Trainer(BaseTrainer):
                 model.zero_grad()
                 
                 #TODO @Sixing Integrate the decoder to the model? Waq, I'll provide an API for this, you may run experiments and tested it.
-                representation = model.encoder(x)
+                representation, _ = model.encoder(x)
                 pred_out = model(x)
                 decodes_out = model.decoder(representation)
 

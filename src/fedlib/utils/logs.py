@@ -1,5 +1,7 @@
 import logging
 import json
+import os
+
 __all__ = ['get_logger', 'init_logs']
 
 def get_logger():
@@ -11,7 +13,8 @@ def get_logger():
 
 def init_logs(log_file_name, args=None, log_dir=None):
     
-    mkdirs(log_dir)
+    #mkdirs(log_dir)
+    os.makedirs(os.path.dirname(log_dir), exist_ok=True)
 
     argument_path = log_file_name + '-arguments.json'
     log_path = log_file_name + '-results.log'
@@ -19,7 +22,7 @@ def init_logs(log_file_name, args=None, log_dir=None):
 
     #TODO change to yaml
     with open(os.path.join(log_dir, argument_path), 'w') as f:
-        json.dump(str(vars(args)), f)
+        json.dump(str(args), f)
 
     for handler in logging.root.handlers[:]:
         logging.root.removeHandler(handler)

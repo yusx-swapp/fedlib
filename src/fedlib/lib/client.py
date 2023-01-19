@@ -25,6 +25,8 @@ class Client:
         self.criterion = kwargs["criterion"]
         self._init_optimizer(kwargs["optimizer"])
         self._init_lr_schedular(kwargs["lr_scheduler"])
+
+        self._testloader = kwargs["test_dataset"]
         
 
     def _init_optimizer(self,optimizer_name:str) -> None:
@@ -113,7 +115,7 @@ class Client:
         self._dataset = dataset
 
     def eval(self):
-        self._trainer.test()
+        self._trainer.test(self._model, self._testloader, self._device)
 
     def save_ckpt(self):
         pass
