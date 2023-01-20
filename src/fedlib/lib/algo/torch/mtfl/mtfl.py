@@ -61,7 +61,7 @@ class Trainer(BaseTrainer):
                 
                 batch_loss.append(loss.item())
             
-            epoch_loss.append(sum(batch_loss) / len(batch_loss))
+            epoch_loss.append(sum(batch_loss) / len(batch_loss) if batch_loss else 0)
             
             if self.logger is not None:
                 logger.info('Epoch: {}\tLoss: {:.6f}'.format(
@@ -133,11 +133,6 @@ class Trainer(BaseTrainer):
                 x = x.to(device)
                 target = target.to(device)
                 pred = model(x)
-                if batch_idx == 0:
-                    print("x.shape",x.shape)
-                    print("pred.shape",pred.shape)
-                    print("target.shape",target.shape)
-                    print("###########################")
                 loss = criterion(pred, target)
 
                 # if args.dataset == "stackoverflow_lr":
