@@ -145,7 +145,6 @@ if __name__ == '__main__':
     args['sample_fn'] = random_sampler
     args['trainer'] = Trainer(logger)
     args['communicator'] = None
-    args["test_dataset"] = None
     args["datadir"] = "./data"
     args["lr_scheduler"] = "ExponentialLR"
 
@@ -163,13 +162,15 @@ if __name__ == '__main__':
     if args["dataset"] in ["mnist","fmnist","femnist"]:
         model = NISTAutoencoder()
         x = torch.rand([10,1,28,28])
+        representation = model.encoder(x)
     elif args["dataset"] == "cifar10":
         model = VAE(64,10)
         x = torch.rand([10,3,32,32])
+        representation, _ = model.encoder(x)
     elif args["dataset"] == "cifar100":
         model = VAE(64,100)
         x = torch.rand([10,3,32,32])
-    representation, _ = model.encoder(x)
+        representation, _ = model.encoder(x)
     x_ = model.decoder(representation)
     pred = model(x)
     print(x.shape,x_.shape,pred.shape)

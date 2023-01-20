@@ -115,7 +115,7 @@ class Client:
         self._dataset = dataset
 
     def eval(self):
-        self._trainer.test(self._model, self._testloader, self._device)
+        return self._trainer.test(self._model, self._testloader, self._device)
 
     def save_ckpt(self):
         pass

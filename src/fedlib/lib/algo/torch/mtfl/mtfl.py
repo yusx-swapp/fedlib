@@ -36,7 +36,11 @@ class Trainer(BaseTrainer):
                 model.zero_grad()
                 
                 #TODO @Sixing Integrate the decoder to the model? Waq, I'll provide an API for this, you may run experiments and tested it.
+                
                 representation, _ = model.encoder(x)
+                #Swap upper line for lower line when using MNIST encoder which returns just a single value
+                #representation = model.encoder(x)
+                
                 pred_out = model(x)
                 decodes_out = model.decoder(representation)
 
@@ -109,6 +113,7 @@ class Trainer(BaseTrainer):
             "test_precision": 0,
             "test_recall": 0,
             "test_total": 0,
+            "test_accuracy":0,
         }
 
         """
@@ -128,6 +133,11 @@ class Trainer(BaseTrainer):
                 x = x.to(device)
                 target = target.to(device)
                 pred = model(x)
+                if batch_idx == 0:
+                    print("x.shape",x.shape)
+                    print("pred.shape",pred.shape)
+                    print("target.shape",target.shape)
+                    print("###########################")
                 loss = criterion(pred, target)
 
                 # if args.dataset == "stackoverflow_lr":
@@ -149,6 +159,9 @@ class Trainer(BaseTrainer):
                     metrics["test_total"] += target.size(0)
                 elif len(target.size()) == 2:  # for tasks of next word prediction
                     metrics["test_total"] += target.size(0) * target.size(1)
+        accuracy = metrics["test_correct"] / len(test_data)
+        metrics["test_accuracy"] = accuracy
+        logger.info('Local accuracy: {:.3f}'.format(accuracy))
         return metrics
 
     def _to_img(self, img, transform = None):
