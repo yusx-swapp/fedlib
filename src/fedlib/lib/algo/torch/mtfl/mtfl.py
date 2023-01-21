@@ -11,7 +11,7 @@ class Trainer(BaseTrainer):
         self.logger = logger
 
 
-    def train(self, model:nn.Module, dataloader , criterion, optimizer, epochs:int, device):
+    def train(self, model:nn.Module, dataloader , criterion, optimizer, scheduler, epochs:int, device):
         """training an autoencoder 
 
         Args:
@@ -20,6 +20,7 @@ class Trainer(BaseTrainer):
             dataloader (_type_): _description_
             criterion (_type_): _description_
             optimizer (_type_): _description_
+            scheduler (_type_): _description_
             epochs (int): _description_
             device (_type_): _description_
         """
@@ -61,6 +62,8 @@ class Trainer(BaseTrainer):
                 
                 batch_loss.append(loss.item())
             
+            scheduler.step()
+
             epoch_loss.append(sum(batch_loss) / len(batch_loss) if batch_loss else 0)
             
             if self.logger is not None:

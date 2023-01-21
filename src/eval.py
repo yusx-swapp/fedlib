@@ -165,10 +165,12 @@ if __name__ == '__main__':
         representation = model.encoder(x)
     elif args["dataset"] == "cifar10":
         model = VAE(64,10)
+        #model = Cifar10Autoencoder()
         x = torch.rand([10,3,32,32])
         representation, _ = model.encoder(x)
     elif args["dataset"] == "cifar100":
         model = VAE(64,100)
+        #model = Cifar100Autoencoder()
         x = torch.rand([10,3,32,32])
         representation, _ = model.encoder(x)
     x_ = model.decoder(representation)
