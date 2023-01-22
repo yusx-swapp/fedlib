@@ -34,7 +34,11 @@ class Trainer(BaseTrainer):
             for batch_idx, (x, labels) in enumerate(dataloader):
                 x, labels = x.to(device), labels.to(device)
                 
-                model.zero_grad()
+                #model.zero_grad()
+                optimizer.zero_grad()
+                x.requires_grad = True
+                labels.requires_grad = False
+                labels = labels.long()
                 
                 #TODO @Sixing Integrate the decoder to the model? Waq, I'll provide an API for this, you may run experiments and tested it.
                 
