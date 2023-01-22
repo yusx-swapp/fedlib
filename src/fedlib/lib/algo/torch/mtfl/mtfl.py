@@ -42,9 +42,9 @@ class Trainer(BaseTrainer):
                 
                 #TODO @Sixing Integrate the decoder to the model? Waq, I'll provide an API for this, you may run experiments and tested it.
                 
-                #representation, _ = model.encoder(x)
+                representation, _ = model.encoder(x)
                 #Swap upper line for lower line when using MNIST encoder which returns just a single value
-                representation = model.encoder(x)
+                #representation = model.encoder(x)
                 
                 pred_out = model(x)
                 decodes_out = model.decoder(representation)
