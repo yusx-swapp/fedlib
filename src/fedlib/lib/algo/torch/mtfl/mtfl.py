@@ -65,8 +65,6 @@ class Trainer(BaseTrainer):
                 #             epoch,  loss.item()))
                 
                 batch_loss.append(loss.item())
-            
-            #scheduler.step()
 
             epoch_loss.append(sum(batch_loss) / len(batch_loss) if batch_loss else 0)
             
@@ -79,6 +77,8 @@ class Trainer(BaseTrainer):
             #     pic = self._to_img(output.cpu().data)
             #     from torchvision.utils import save_image
             #     save_image(pic, './dc_img/image_{}.png'.format(epoch))
+        
+        scheduler.step()
 
     def aggregate(self, nets_encoders,local_datasize, globa_encoder ):        
             """fedavg aggregation
