@@ -34,17 +34,17 @@ class Trainer(BaseTrainer):
             for batch_idx, (x, labels) in enumerate(dataloader):
                 x, labels = x.to(device), labels.to(device)
                 
-                #model.zero_grad()
-                optimizer.zero_grad()
-                x.requires_grad = True
-                labels.requires_grad = False
-                labels = labels.long()
+                model.zero_grad()
+                # optimizer.zero_grad()
+                # x.requires_grad = True
+                # labels.requires_grad = False
+                # labels = labels.long()
                 
                 #TODO @Sixing Integrate the decoder to the model? Waq, I'll provide an API for this, you may run experiments and tested it.
                 
-                representation, _ = model.encoder(x)
+                #representation, _ = model.encoder(x)
                 #Swap upper line for lower line when using MNIST encoder which returns just a single value
-                #representation = model.encoder(x)
+                representation = model.encoder(x)
                 
                 pred_out = model(x)
                 decodes_out = model.decoder(representation)
@@ -59,14 +59,14 @@ class Trainer(BaseTrainer):
 
                 optimizer.step()
                 
-                if self.logger is not None:
-                    if batch_idx % 10 == 0:
-                        logger.info('Update Epoch: {} \tLoss: {:.6f}'.format(
-                            epoch,  loss.item()))
+                # if self.logger is not None:
+                #     if batch_idx % 10 == 0:
+                #         logger.info('Update Epoch: {} \tLoss: {:.6f}'.format(
+                #             epoch,  loss.item()))
                 
                 batch_loss.append(loss.item())
             
-            scheduler.step()
+            #scheduler.step()
 
             epoch_loss.append(sum(batch_loss) / len(batch_loss) if batch_loss else 0)
             
@@ -137,6 +137,7 @@ class Trainer(BaseTrainer):
 
         with torch.no_grad():
             for batch_idx, (x, target) in enumerate(test_data):
+                
                 x = x.to(device)
                 target = target.to(device)
                 pred = model(x)
@@ -156,14 +157,14 @@ class Trainer(BaseTrainer):
                 _, predicted = torch.max(pred, 1)
                 correct = predicted.eq(target).sum()
                 metrics["test_correct"] += correct.item()
+                
                 metrics["test_loss"] += loss.item() * target.size(0)
                 if len(target.size()) == 1:  #
                     metrics["test_total"] += target.size(0)
                 elif len(target.size()) == 2:  # for tasks of next word prediction
                     metrics["test_total"] += target.size(0) * target.size(1)
-        accuracy = metrics["test_correct"] / len(test_data)
-        metrics["test_accuracy"] = accuracy
-        logger.info('Local accuracy: {:.3f}'.format(accuracy))
+        metrics["test_accuracy"] = metrics["test_correct"] / metrics["test_total"]
+        logger.info('Local accuracy: {:.3f}'.format(metrics["test_accuracy"]))
         return metrics
 
     def _to_img(self, img, transform = None):
