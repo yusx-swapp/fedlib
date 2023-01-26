@@ -55,7 +55,11 @@ class Cifar10Autoencoder(nn.Module):
             nn.ReLU(True),
             nn.Conv2d(6,16,kernel_size=5),
             nn.ReLU(True))
-        self.predictor = nn.Linear(in_features=9216, out_features=10, bias=True)
+        self.predictor = nn.Sequential(
+            nn.Linear(in_features=9216, out_features=120, bias=True),
+            nn.Linear(in_features=120, out_features=84, bias=True),
+            nn.Linear(in_features=84, out_features=10, bias=True)
+        )
         self.decoder = nn.Sequential(             
             nn.ConvTranspose2d(16,6,kernel_size=5),
             nn.ReLU(True),
@@ -77,7 +81,11 @@ class Cifar100Autoencoder(nn.Module):
             nn.ReLU(True),
             nn.Conv2d(6,16,kernel_size=5),
             nn.ReLU(True))
-        self.predictor = nn.Linear(in_features=9216, out_features=100, bias=True)
+        self.predictor = nn.Sequential(
+            nn.Linear(in_features=9216, out_features=120, bias=True),
+            nn.Linear(in_features=120, out_features=84, bias=True),
+            nn.Linear(in_features=84, out_features=10, bias=True)
+        )
         self.decoder = nn.Sequential(             
             nn.ConvTranspose2d(16,6,kernel_size=5),
             nn.ReLU(True),
