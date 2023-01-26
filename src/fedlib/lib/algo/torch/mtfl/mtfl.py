@@ -166,7 +166,6 @@ class Trainer(BaseTrainer):
                 elif len(target.size()) == 2:  # for tasks of next word prediction
                     metrics["test_total"] += target.size(0) * target.size(1)
         metrics["test_accuracy"] = metrics["test_correct"] / metrics["test_total"]
-        logger.info('Local accuracy: {:.3f}'.format(metrics["test_accuracy"]))
         return metrics
 
     def _to_img(self, img, transform = None):
