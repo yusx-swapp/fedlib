@@ -84,7 +84,7 @@ class Cifar100Autoencoder(nn.Module):
         self.predictor = nn.Sequential(
             nn.Linear(in_features=9216, out_features=120, bias=True),
             nn.Linear(in_features=120, out_features=84, bias=True),
-            nn.Linear(in_features=84, out_features=10, bias=True)
+            nn.Linear(in_features=84, out_features=100, bias=True)
         )
         self.decoder = nn.Sequential(             
             nn.ConvTranspose2d(16,6,kernel_size=5),
