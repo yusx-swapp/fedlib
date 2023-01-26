@@ -56,6 +56,7 @@ class MTFLEnv:
                 client.set_model_params(globa_encoder, module_name="encoder")
                 client.client_update( epochs=local_epochs)
                 accuracy = client.eval()["test_accuracy"]
+                self.logger.info('Local accuracy: {:.3f}'.format(accuracy))
                 accuracies.append(accuracy)
                 
                 if id in selected:
