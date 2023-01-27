@@ -47,6 +47,7 @@ class Trainer(BaseTrainer):
                 representation = model.encoder(x)
                 
                 pred_out = model(x)
+                #pred_out = model.predictor(representation.view(x.size(0), -1))
                 decodes_out = model.decoder(representation)
 
                 loss = criterion_pred(pred_out, labels)
@@ -66,7 +67,7 @@ class Trainer(BaseTrainer):
                 
                 batch_loss.append(loss.item())
             
-            scheduler.step()
+            #scheduler.step()
 
             epoch_loss.append(sum(batch_loss) / len(batch_loss) if batch_loss else 0)
             
@@ -165,7 +166,7 @@ class Trainer(BaseTrainer):
                     metrics["test_total"] += target.size(0)
                 elif len(target.size()) == 2:  # for tasks of next word prediction
                     metrics["test_total"] += target.size(0) * target.size(1)
-        metrics["test_accuracy"] = metrics["test_correct"] / metrics["test_total"]
+        metrics["test_accuracy"] = metrics["test_correct"] / len(test_data.dataset)
         return metrics
 
     def _to_img(self, img, transform = None):
