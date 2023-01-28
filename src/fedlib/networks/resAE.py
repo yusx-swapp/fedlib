@@ -145,8 +145,14 @@ class VAE(nn.Module):
 
     def __init__(self, z_dim,n_classes):
         super().__init__()
+        self.pred_dims = [64, 32] if n_classes == 10 else [128, 128]
         self.encoder = ResNet18Enc(z_dim=z_dim)
         self.predictor = nn.Linear(in_features=z_dim, out_features=n_classes, bias=True)
+        # self.predictor = nn.Sequential(
+        #     nn.Linear(in_features=z_dim, out_features=self.pred_dims[0], bias=True),
+        #     nn.Linear(in_features=self.pred_dims[0], out_features=self.pred_dims[1], bias=True),
+        #     nn.Linear(in_features=self.pred_dims[1], out_features=n_classes, bias=True)
+        # )
         self.decoder = ResNet18Dec(z_dim=z_dim)
 
     def forward(self, x):
