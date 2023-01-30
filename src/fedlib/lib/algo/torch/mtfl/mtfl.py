@@ -54,7 +54,6 @@ class Trainer(BaseTrainer):
                 # torch.nn.utils.clip_grad_norm_(self.model.parameters(), 0.5)
 
                 optimizer.step()
-                scheduler.step()
                 # if self.logger is not None:
                 #     if batch_idx % 10 == 0:
                 #         logger.info('Update Epoch: {} \tLoss: {:.6f}'.format(
