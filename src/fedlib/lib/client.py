@@ -50,7 +50,7 @@ class Client:
             KeyError: _description_
         """
         if lr_scheduler_name.lower() == "exponentiallr": #ExponentialLR
-            self.scheduler = torch.optim.lr_scheduler.ExponentialLR(self.optimizer, gamma=0.9)
+            self.scheduler = torch.optim.lr_scheduler.ExponentialLR(self.optimizer, gamma=0.99)
         else:
             raise KeyError
 
