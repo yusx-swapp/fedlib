@@ -162,9 +162,9 @@ class VAE(nn.Module):
         #z = self.reparameterize(mean, logvar)
         z = self.encoder(x)
         
-        x = self.predictor(z)
-        #x = self.decoder(z)
-        return x
+        pred = self.predictor(z)
+        x_ = self.decoder(z)
+        return pred, x_
     
     @staticmethod
     def reparameterize(mean, logvar):

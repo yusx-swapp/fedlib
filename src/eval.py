@@ -171,18 +171,19 @@ if __name__ == '__main__':
         model = NISTAutoencoder()
         x = torch.rand([10,1,28,28])
         representation = model.encoder(x)
+        pred = model(x)
+        x_ = model.decoder(representation)
     elif args["dataset"] == "cifar10":
         model = VAE(128,10)
         #model = Cifar10Autoencoder()
         x = torch.rand([10,3,32,32])
-        representation = model.encoder(x)
+        pred, x_ = model(x)
     elif args["dataset"] == "cifar100":
         model = VAE(256,100)
         #model = Cifar100Autoencoder()
         x = torch.rand([10,3,32,32])
-        representation = model.encoder(x)
-    x_ = model.decoder(representation)
-    pred = model(x)
+        pred, x_ = model(x)
+    
     print(x.shape,x_.shape,pred.shape)
 
     args["global_model"] = model.encoder

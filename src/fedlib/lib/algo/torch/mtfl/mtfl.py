@@ -44,14 +44,15 @@ class Trainer(BaseTrainer):
                 
                 #representation, _ = model.encoder(x)
                 #Swap upper line for lower line when using MNIST encoder which returns just a single value
-                representation = model.encoder(x)
+                #representation = model.encoder(x)
                 
-                pred_out = model(x)
+                pred_out, decodes_out = model(x)
                 #pred_out = model.predictor(representation.view(x.size(0), -1))
-                decodes_out = model.decoder(representation)
+                #decodes_out = model.decoder(x)
 
-                loss = criterion_pred(pred_out, labels)
-                loss += criterion_rep(decodes_out, x)
+                loss1 = criterion_pred(pred_out, labels)
+                loss2 = criterion_rep(decodes_out, x)
+                loss = loss1 + loss2
 
                 loss.backward()
 
@@ -66,6 +67,8 @@ class Trainer(BaseTrainer):
                 #             epoch,  loss.item()))
                 
                 batch_loss.append(loss.item())
+            
+            scheduler.step()
 
             epoch_loss.append(sum(batch_loss) / len(batch_loss) if batch_loss else 0)
             
@@ -78,8 +81,6 @@ class Trainer(BaseTrainer):
             #     pic = self._to_img(output.cpu().data)
             #     from torchvision.utils import save_image
             #     save_image(pic, './dc_img/image_{}.png'.format(epoch))
-
-        scheduler.step()
         
 
 
@@ -143,7 +144,7 @@ class Trainer(BaseTrainer):
                 
                 x = x.to(device)
                 target = target.to(device)
-                pred = model(x)
+                pred, _ = model(x)
                 loss = criterion(pred, target)
 
                 # if args.dataset == "stackoverflow_lr":
