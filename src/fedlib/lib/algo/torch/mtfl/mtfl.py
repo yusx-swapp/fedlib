@@ -35,13 +35,8 @@ class Trainer(BaseTrainer):
                 x, labels = x.to(device), labels.to(device)
                 
                 model.zero_grad()
-                # optimizer.zero_grad()
-                # x.requires_grad = True
-                # labels.requires_grad = False
-                # labels = labels.long()
                 
                 #TODO @Sixing Integrate the decoder to the model? Waq, I'll provide an API for this, you may run experiments and tested it.
-                
                 #representation, _ = model.encoder(x)
                 #Swap upper line for lower line when using MNIST encoder which returns just a single value
                 representation = model.encoder(x)
@@ -59,7 +54,7 @@ class Trainer(BaseTrainer):
                 # torch.nn.utils.clip_grad_norm_(self.model.parameters(), 0.5)
 
                 optimizer.step()
-                
+                scheduler.step()
                 # if self.logger is not None:
                 #     if batch_idx % 10 == 0:
                 #         logger.info('Update Epoch: {} \tLoss: {:.6f}'.format(
