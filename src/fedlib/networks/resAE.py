@@ -84,7 +84,8 @@ class ResNet18Enc(nn.Module):
         self.layer2 = self._make_layer(BasicBlockEnc, 64, num_Blocks[1], stride=2)
         self.layer3 = self._make_layer(BasicBlockEnc, 128, num_Blocks[2], stride=2)
         self.layer4 = self._make_layer(BasicBlockEnc, 256, num_Blocks[3], stride=2)
-        self.linear = nn.Linear(256, 2 * z_dim)
+        #self.linear = nn.Linear(256, 2 * z_dim)
+        self.linear = nn.Linear(256, z_dim)
 
     def _make_layer(self, BasicBlockEnc, planes, num_Blocks, stride):
         strides = [stride] + [1]*(num_Blocks-1)
@@ -103,9 +104,10 @@ class ResNet18Enc(nn.Module):
         x = F.adaptive_avg_pool2d(x, 1)
         x = x.view(x.size(0), -1)
         x = self.linear(x)
-        mu = x[:, :self.z_dim]
-        logvar = x[:, self.z_dim:]
-        return mu, logvar
+        #mu = x[:, :self.z_dim]
+        #logvar = x[:, self.z_dim:]
+        #return mu, logvar
+        return x
 
 class ResNet18Dec(nn.Module):
 
@@ -156,8 +158,10 @@ class VAE(nn.Module):
         self.decoder = ResNet18Dec(z_dim=z_dim)
 
     def forward(self, x):
-        mean, logvar = self.encoder(x)
-        z = self.reparameterize(mean, logvar)
+        #mean, logvar = self.encoder(x)
+        #z = self.reparameterize(mean, logvar)
+        z = self.encoder(x)
+        
         x = self.predictor(z)
         #x = self.decoder(z)
         return x
