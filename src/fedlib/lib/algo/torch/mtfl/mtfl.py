@@ -54,11 +54,6 @@ class Trainer(BaseTrainer):
                 # torch.nn.utils.clip_grad_norm_(self.model.parameters(), 0.5)
 
                 optimizer.step()
-                # if self.logger is not None:
-                #     if batch_idx % 10 == 0:
-                #         logger.info('Update Epoch: {} \tLoss: {:.6f}'.format(
-                #             epoch,  loss.item()))
-                
                 batch_loss.append(loss.item())
 
             epoch_loss.append(sum(batch_loss) / len(batch_loss) if batch_loss else 0)
@@ -73,7 +68,7 @@ class Trainer(BaseTrainer):
             #     from torchvision.utils import save_image
             #     save_image(pic, './dc_img/image_{}.png'.format(epoch))
 
-        scheduler.step()
+            scheduler.step()
         
 
 
