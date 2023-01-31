@@ -52,7 +52,8 @@ class MTFLEnv:
                 client = self.clients[id]
                 if id != client.id:
                     raise IndexError("id not match")
-                
+            
+
                 client.set_model_params(globa_encoder, module_name="encoder")
                 client.client_update( epochs=local_epochs)
                 accuracy = client.eval()["test_accuracy"]
