@@ -106,7 +106,7 @@ def get_args():
     parser.add_argument('--partition', type=str, default='homo', help='the data partitioning strategy')
     parser.add_argument('--batch_size', type=int, default=64, help='input batch size for training (default: 64)')
     parser.add_argument('--lr', type=float, default=0.1, help='learning rate (default: 0.01)')
-    parser.add_argument('--epochs', type=int, default=5, help='number of local epochs')
+    parser.add_argument('--epochs', type=int, default=20, help='number of local epochs')
     parser.add_argument('--pre_epochs', type=int, default=10, help='number of local pre train epochs')
     parser.add_argument('--n_clients', type=int, default=100,  help='number of workers in a distributed cluster')
     parser.add_argument('--alg', type=str, default='fedavg',
@@ -154,7 +154,7 @@ if __name__ == '__main__':
     args['trainer'] = Trainer(logger)
     args['communicator'] = None
     args["datadir"] = "./data"
-    args["lr_scheduler"] = "ExponentialLR"
+    args["lr_scheduler"] = "ExponentialLR"  
 
     print("Args:",args)
 
