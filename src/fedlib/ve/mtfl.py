@@ -47,12 +47,13 @@ class MTFLEnv:
             accuracies = []
             self.logger.info('*******starting rounds %s optimization******' % str(round+1))
 
-            for id in range(self.n_clients):
+            for id in selected:
                 self.logger.info('optimize the %s-th clients' % str(id))
                 client = self.clients[id]
                 if id != client.id:
                     raise IndexError("id not match")
-                
+            
+
                 client.set_model_params(globa_encoder, module_name="encoder")
                 client.client_update( epochs=local_epochs)
                 accuracy = client.eval()["test_accuracy"]
