@@ -47,7 +47,7 @@ class MTFLEnv:
             accuracies = []
             self.logger.info('*******starting rounds %s optimization******' % str(round+1))
 
-            for id in range(self.n_clients):
+            for id in selected:
                 self.logger.info('optimize the %s-th clients' % str(id))
                 client = self.clients[id]
                 if id != client.id:
@@ -59,9 +59,9 @@ class MTFLEnv:
                 self.logger.info('Local accuracy: {:.3f}'.format(accuracy))
                 accuracies.append(accuracy)
                 
-                if id in selected:
-                    nets_encoders.append(client.get_model_params(module_name="encoder"))
-                    local_datasize.append(client.datasize)
+                #if id in selected:
+                nets_encoders.append(client.get_model_params(module_name="encoder"))
+                local_datasize.append(client.datasize)
 
             self.server.server_update(nets_encoders=nets_encoders, local_datasize=local_datasize,globa_encoder= globa_encoder)
             self.logger.info('Global accuracy: {:.3f}'.format(sum(accuracies)/len(accuracies)))
