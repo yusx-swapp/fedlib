@@ -62,6 +62,7 @@ class Client:
         kwargs["model"] = self._model   
         kwargs["optimizer"] = self.optimizer
         kwargs["criterion"] = self.criterion
+        kwargs["scheduler"] = self.scheduler
 
         self._trainer.train(**kwargs)
     
