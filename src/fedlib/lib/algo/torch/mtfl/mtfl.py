@@ -11,7 +11,7 @@ class Trainer(BaseTrainer):
         self.logger = logger
 
 
-    def train(self, model:nn.Module, dataloader , criterion, optimizer, epochs:int, device):
+    def train(self, model:nn.Module, dataloader , criterion, optimizer, epochs:int, scheduler, device):
         """training an autoencoder 
 
         Args:
@@ -62,7 +62,7 @@ class Trainer(BaseTrainer):
             if self.logger is not None:
                 logger.info('Epoch: {}\tLoss: {:.6f}'.format(
                     epoch, sum(epoch_loss) / len(epoch_loss)))
-
+            scheduler.step()
             #TODO @Sixing: Need add an argument `save_dir` to save the decoder img
             # if epoch % 10 == 0:
             #     pic = self._to_img(output.cpu().data)
