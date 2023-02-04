@@ -41,10 +41,12 @@ class NISTAutoencoder(nn.Module):
 
 
     def forward(self, x):
-        x = self.encoder(x)
-        x = x.view(x.size(0), -1)
-        x = self.predictor(x)
-        return x
+        z = self.encoder(x)
+        #x_ = self.decoder(z)
+        z = z.view(z.size(0), -1)
+        pred = self.predictor(z)
+        
+        return pred, 0 #x_
 
 class Cifar10Autoencoder(nn.Module):
     def __init__(self):
@@ -68,9 +70,9 @@ class Cifar10Autoencoder(nn.Module):
     def forward(self,x):
         x = self.encoder(x)
         x = x.view(x.size(0), -1)
-        x = self.predictor(x)
-        #x = self.decoder(x)
-        return x
+        pred = self.predictor(x)
+        x_ = self.decoder(x)
+        return pred, x_
 
 class Cifar100Autoencoder(nn.Module):
     def __init__(self):
@@ -94,9 +96,9 @@ class Cifar100Autoencoder(nn.Module):
     def forward(self,x):
         x = self.encoder(x)
         x = x.view(x.size(0), -1)
-        x = self.predictor(x)
-        #x = self.decoder(x)
-        return x
+        pred = self.predictor(x)
+        x_ = self.decoder(x)
+        return pred, x_
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -170,20 +172,15 @@ if __name__ == '__main__':
     if args["dataset"] in ["mnist","fmnist","femnist"]:
         model = NISTAutoencoder()
         x = torch.rand([10,1,28,28])
-        representation = model.encoder(x)
-        pred = model(x)
-        x_ = model.decoder(representation)
     elif args["dataset"] == "cifar10":
         model = VAE(1000,10)
         #model = Cifar10Autoencoder()
         x = torch.rand([10,3,32,32])
-        pred, x_ = model(x)
     elif args["dataset"] == "cifar100":
         model = VAE(1000,100)
         #model = Cifar100Autoencoder()
-        x = torch.rand([10,3,32,32])
-        pred, x_ = model(x)
-    
+        x = torch.rand([10,3,32,32])     
+    pred, x_ = model(x)
     print(x.shape,x_.shape,pred.shape)
 
     args["global_model"] = model.encoder

@@ -348,6 +348,10 @@ def partition_data(dataset, datadir,  partition, n_parties, beta=0.4,logdir =Non
             K = 2
         else:
             K = 10
+        if dataset == "cifar100":
+            K = 100
+        elif dataset == "tinyimagenet":
+            K = 200
         if num == 10:
             net_dataidx_map = {i: np.ndarray(0, dtype=np.int64) for i in range(n_parties)}
             for i in range(10):
@@ -357,7 +361,7 @@ def partition_data(dataset, datadir,  partition, n_parties, beta=0.4,logdir =Non
                 for j in range(n_parties):
                     net_dataidx_map[j] = np.append(net_dataidx_map[j], split[j])
         else:
-            times = [0 for i in range(10)]
+            times = [0 for i in range(K)]
             contain = []
             for i in range(n_parties):
                 current = [i % K]
