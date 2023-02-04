@@ -103,7 +103,7 @@ class Cifar100Autoencoder(nn.Module):
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', type=str, default='res18AE', help='neural network used in training')
-    parser.add_argument('--dataset', type=str, default='mnist', help='dataset used for training')
+    parser.add_argument('--dataset', type=str, default='cifar10', help='dataset used for training')
     parser.add_argument('--net_config', type=lambda x: list(map(int, x.split(', '))))
     parser.add_argument('--partition', type=str, default='homo', help='the data partitioning strategy')
     parser.add_argument('--batch_size', type=int, default=64, help='input batch size for training (default: 64)')
