@@ -1,6 +1,7 @@
 *pycache*
 *pyc
 src/data/*
+src/logs/
 .vscode
 Docker/*
 src/debug/
@@ -11,3 +12,6 @@ src/fedlib/lib/fl/*
 *ipynp_checkpoints*
 *code-workspace
 demo/data/*
+*.sh
+*.out
+*.err

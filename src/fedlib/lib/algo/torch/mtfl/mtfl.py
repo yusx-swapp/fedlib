@@ -11,7 +11,7 @@ class Trainer(BaseTrainer):
         self.logger = logger
 
 
-    def train(self, model:nn.Module, dataloader , criterion, optimizer, epochs:int, scheduler, device):
+    def train(self, model:nn.Module, dataloader , criterion, optimizer, scheduler, epochs:int, device):
         """training an autoencoder 
 
         Args:
@@ -20,6 +20,7 @@ class Trainer(BaseTrainer):
             dataloader (_type_): _description_
             criterion (_type_): _description_
             optimizer (_type_): _description_
+            scheduler (_type_): _description_
             epochs (int): _description_
             device (_type_): _description_
         """
@@ -36,12 +37,17 @@ class Trainer(BaseTrainer):
                 model.zero_grad()
                 
                 #TODO @Sixing Integrate the decoder to the model? Waq, I'll provide an API for this, you may run experiments and tested it.
-                representation = model.encoder(x)
-                pred_out = model(x)
-                decodes_out = model.decoder(representation)
+                #representation, _ = model.encoder(x)
+                #Swap upper line for lower line when using MNIST encoder which returns just a single value
+                #representation = model.encoder(x)
+                
+                pred_out, decodes_out = model(x)
+                #pred_out = model.predictor(representation.view(x.size(0), -1))
+                #decodes_out = model.decoder(x)
 
-                loss = criterion_pred(pred_out, labels)
-                loss += criterion_rep(decodes_out, x)
+                loss1 = criterion_pred(pred_out, labels)
+                loss2 = criterion_rep(decodes_out, x)
+                loss = loss1 + loss2
 
                 loss.backward()
 
@@ -49,15 +55,11 @@ class Trainer(BaseTrainer):
                 # torch.nn.utils.clip_grad_norm_(self.model.parameters(), 0.5)
 
                 optimizer.step()
-                
-                if self.logger is not None:
-                    if batch_idx % 10 == 0:
-                        logger.info('Update Epoch: {} \tLoss: {:.6f}'.format(
-                            epoch,  loss.item()))
-                
                 batch_loss.append(loss.item())
             
-            epoch_loss.append(sum(batch_loss) / len(batch_loss))
+            scheduler.step()
+
+            epoch_loss.append(sum(batch_loss) / len(batch_loss) if batch_loss else 0)
             
             if self.logger is not None:
                 logger.info('Epoch: {}\tLoss: {:.6f}'.format(
@@ -68,6 +70,8 @@ class Trainer(BaseTrainer):
             #     pic = self._to_img(output.cpu().data)
             #     from torchvision.utils import save_image
             #     save_image(pic, './dc_img/image_{}.png'.format(epoch))
+        
+
 
     def aggregate(self, nets_encoders,local_datasize, globa_encoder ):        
             """fedavg aggregation
@@ -109,6 +113,7 @@ class Trainer(BaseTrainer):
             "test_precision": 0,
             "test_recall": 0,
             "test_total": 0,
+            "test_accuracy":0,
         }
 
         """
@@ -125,9 +130,10 @@ class Trainer(BaseTrainer):
 
         with torch.no_grad():
             for batch_idx, (x, target) in enumerate(test_data):
+                
                 x = x.to(device)
                 target = target.to(device)
-                pred = model(x)
+                pred, _ = model(x)
                 loss = criterion(pred, target)
 
                 # if args.dataset == "stackoverflow_lr":
@@ -144,11 +150,13 @@ class Trainer(BaseTrainer):
                 _, predicted = torch.max(pred, 1)
                 correct = predicted.eq(target).sum()
                 metrics["test_correct"] += correct.item()
+                
                 metrics["test_loss"] += loss.item() * target.size(0)
                 if len(target.size()) == 1:  #
                     metrics["test_total"] += target.size(0)
                 elif len(target.size()) == 2:  # for tasks of next word prediction
                     metrics["test_total"] += target.size(0) * target.size(1)
+        metrics["test_accuracy"] = metrics["test_correct"] / len(test_data.dataset)
         return metrics
 
     def _to_img(self, img, transform = None):
