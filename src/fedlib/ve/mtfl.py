@@ -44,6 +44,7 @@ class MTFLEnv:
             
             nets_encoders = []
             local_datasize = []
+            accuracies = []
             self.logger.info('*******starting rounds %s optimization******' % str(round+1))
 
             for id in selected:
@@ -51,14 +52,19 @@ class MTFLEnv:
                 client = self.clients[id]
                 if id != client.id:
                     raise IndexError("id not match")
-                
+            
+
                 client.set_model_params(globa_encoder, module_name="encoder")
                 client.client_update( epochs=local_epochs)
+                accuracy = client.eval()["test_accuracy"]
+                self.logger.info('Local accuracy: {:.3f}'.format(accuracy))
+                accuracies.append(accuracy)
                 
+                #if id in selected:
                 nets_encoders.append(client.get_model_params(module_name="encoder"))
                 local_datasize.append(client.datasize)
 
             self.server.server_update(nets_encoders=nets_encoders, local_datasize=local_datasize,globa_encoder= globa_encoder)
-            # self.server.eval()
-
-
+            self.logger.info('Global accuracy: {:.3f}'.format(sum(accuracies)/len(accuracies)))
+            #Cannot call server.eval() since global model has no predictor/decoder head
+            #self.server.eval()

@@ -25,6 +25,8 @@ class Client:
         self.criterion = kwargs["criterion"]
         self._init_optimizer(kwargs["optimizer"])
         self._init_lr_schedular(kwargs["lr_scheduler"])
+
+        self._testloader = kwargs["test_dataset"]
         
 
     def _init_optimizer(self,optimizer_name:str) -> None:
@@ -48,7 +50,7 @@ class Client:
             KeyError: _description_
         """
         if lr_scheduler_name.lower() == "exponentiallr": #ExponentialLR
-            self.scheduler = torch.optim.lr_scheduler.ExponentialLR(self.optimizer, gamma=0.9)
+            self.scheduler = torch.optim.lr_scheduler.ExponentialLR(self.optimizer, gamma=0.99)
         else:
             raise KeyError
 
@@ -61,6 +63,7 @@ class Client:
         kwargs["device"] = self._device
         kwargs["model"] = self._model   
         kwargs["optimizer"] = self.optimizer
+        kwargs["scheduler"] = self.scheduler
         kwargs["criterion"] = self.criterion
         kwargs["scheduler"] = self.scheduler
 
@@ -114,7 +117,7 @@ class Client:
         self._dataset = dataset
 
     def eval(self):
-        self._trainer.test()
+        return self._trainer.test(self._model, self._testloader, self._device)
 
     def save_ckpt(self):
         pass
