@@ -10,7 +10,7 @@ class Trainer(BaseTrainer):
         super().__init__()
         self.logger = logger
 
-
+    # 
     def train(self, model:nn.Module, dataloader , criterion, optimizer, scheduler, epochs:int, device):
         """training an autoencoder 
 
