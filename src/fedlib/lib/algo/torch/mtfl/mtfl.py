@@ -11,7 +11,7 @@ class Trainer(BaseTrainer):
         self.logger = logger
 
 
-    def train(self, model:nn.Module, dataloader , criterion, optimizer, epochs:int, scheduler, device):
+    def train(self, model:nn.Module, dataloader , criterion, optimizer, scheduler, epochs:int, device):
         """training an autoencoder 
 
         Args:
