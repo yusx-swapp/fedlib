@@ -26,7 +26,9 @@ class Client:
         self._init_optimizer(kwargs["optimizer"])
         self._init_lr_schedular(kwargs["lr_scheduler"])
 
-        self._testloader = kwargs["test_dataset"]
+        #Swap next lines for global test vs local test
+        #self._testloader = kwargs["test_dataset"]
+        self._testloader = kwargs["testloader"]
         
 
     def _init_optimizer(self,optimizer_name:str) -> None:
