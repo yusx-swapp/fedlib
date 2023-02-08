@@ -167,6 +167,9 @@ if __name__ == '__main__':
                                                                                     args["datadir"],
                                                                                       args["batch_size"],
                                                                                       32)
+    print("train_dl_global:",len(train_dl_global.dataset))
+    print("test_dl_global:",len(test_dl_global.dataset))
+    
     args["test_dataset"] = test_dl_global
 
     if args["dataset"] in ["mnist","fmnist","femnist"]:
@@ -204,6 +207,7 @@ if __name__ == '__main__':
         args["trainloader"] = data_loaders[id]
         args["testloader"] = test_loaders[id]
         args["model"] = copy.deepcopy(model)
+        print("Client:",id)
         clients[id] = Client(**args)
 
     simulator = MTFLEnv(server=server, clients=clients, communication_rounds=args["comm_round"],n_clients= args["n_clients"],sample_rate=args["sample"])
