@@ -11,7 +11,7 @@ class Server:
         self._trainer = kwargs["trainer"]
         self._communicator = kwargs["communicator"]
 
-        self._test_dataset = kwargs["test_dataset"]
+        self._test_dataset = kwargs["test_dl_global"]
         '''initialize key pair'''
         self._key_generator()
     
@@ -69,6 +69,9 @@ class Server:
 
     def eval(self):
         self._trainer.test(self._global_model,self._test_dataset, self._device)
+    
+    def eval_decoder(self):
+        return self._trainer.test_decoder(self._global_model, self._test_dataset, self._device)
 
     def save_ckpt(self):
         pass

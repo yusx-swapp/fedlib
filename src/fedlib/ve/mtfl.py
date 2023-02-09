@@ -39,32 +39,45 @@ class MTFLEnv:
         
         for round in range(self.communication_rounds):
             selected = self.server.client_sample(n_clients= self.n_clients, sample_rate=self.sample_rate)
+            globa_encoder = self.server.get_global_model_params()            
             
-            globa_encoder = self.server.get_global_model_params()
-            
-            nets_encoders = []
-            local_datasize = []
-            accuracies = []
+            nets_encoders, local_datasize = [], []
+            accuracies, losses = [], []
             self.logger.info('*******starting rounds %s optimization******' % str(round+1))
-
+            
+            #Fine tune selected clients
             for id in selected:
                 self.logger.info('optimize the %s-th clients' % str(id))
                 client = self.clients[id]
                 if id != client.id:
-                    raise IndexError("id not match")
-            
-
-                client.set_model_params(globa_encoder, module_name="encoder")
-                client.client_update( epochs=local_epochs)
-                accuracy = client.eval()["test_accuracy"]
-                self.logger.info('Local accuracy: {:.3f}'.format(accuracy))
-                accuracies.append(accuracy)
+                    raise IndexError("client id doesn't match")
                 
-                #if id in selected:
+                client.client_update( epochs=local_epochs)
                 nets_encoders.append(client.get_model_params(module_name="encoder"))
-                local_datasize.append(client.datasize)
-
+                local_datasize.append(client.datasize)            
+            
             self.server.server_update(nets_encoders=nets_encoders, local_datasize=local_datasize,globa_encoder= globa_encoder)
+            globa_encoder = self.server.get_global_model_params()
+            
+            #Collect accuracy from all clients
+            for id in range(self.n_clients):
+                #Clients download latest encoder before evaluation
+                client = self.clients[id]
+                if id != client.id:
+                    raise IndexError("client id doesn't match")
+                client.set_model_params(globa_encoder, module_name="encoder")
+                accuracy = client.eval()["test_accuracy"]
+                accuracies.append(accuracy)
+                if id in selected:
+                    loss = client.eval_decoder()
+                    self.logger.info('Client {}-th local accuracy: {:.3f}\t decoder loss: {:.3f}'.format(id, accuracy, loss))
+                    losses.append(loss)
+                else:
+                    self.logger.info('Client {}-th local accuracy: {:.3f}\t decoder loss: {}'.format(id, accuracy, "-"))
+                
+                
+
             self.logger.info('Global accuracy: {:.3f}'.format(sum(accuracies)/len(accuracies)))
+            self.logger.info('Global decoder loss: {:.3f}'.format(sum(losses)/len(losses)))
             #Cannot call server.eval() since global model has no predictor/decoder head
             #self.server.eval()

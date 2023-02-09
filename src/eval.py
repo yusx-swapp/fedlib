@@ -170,7 +170,7 @@ if __name__ == '__main__':
     print("train_dl_global:",len(train_dl_global.dataset))
     print("test_dl_global:",len(test_dl_global.dataset))
     
-    args["test_dataset"] = test_dl_global
+    args["test_dl_global"] = test_dl_global
 
     if args["dataset"] in ["mnist","fmnist","femnist"]:
         model = NISTAutoencoder()

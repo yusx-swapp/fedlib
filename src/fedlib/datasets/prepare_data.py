@@ -536,7 +536,7 @@ def get_client_dataloader(dataset, datadir, train_bs, test_bs, dataidxs=None, no
         # else:
         #     train_ds = dl_obj(datadir, dataidxs=dataidxs, train=True, transform=transform_train, download=True)
         #     test_ds = dl_obj(datadir, train=False, transform=transform_test, download=True)
-        data_loaders = []
+        train_loaders = []
         test_loaders = []
         total_train,total_test = 0, 0
         for key, dataid in dataidxs.items():
@@ -549,10 +549,10 @@ def get_client_dataloader(dataset, datadir, train_bs, test_bs, dataidxs=None, no
             train_dl = data.DataLoader(dataset=train_ds, batch_size=train_bs, shuffle=True, drop_last=True)     
         #Phuong 09/26 drop_last=False -> True
             test_dl = data.DataLoader(dataset=test_ds, batch_size=test_bs, shuffle=False, drop_last=True)
-            data_loaders.append(train_dl)
+            train_loaders.append(train_dl)
             test_loaders.append(test_dl)
         print("Total train:",total_train,"\t Total test:",total_test)
-    return data_loaders, test_loaders
+    return train_loaders, test_loaders
 
 
 def get_dataloader(dataset, datadir, train_bs, test_bs, dataidxs=None, noise_level=0, net_id=None, total=0, n_worker=32):

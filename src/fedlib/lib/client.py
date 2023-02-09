@@ -26,8 +26,7 @@ class Client:
         self._init_optimizer(kwargs["optimizer"])
         self._init_lr_schedular(kwargs["lr_scheduler"])
 
-        #Swap next lines for global test vs local test
-        #self._testloader = kwargs["test_dataset"]
+        self._global_testloader = kwargs["test_dl_global"]
         self._testloader = kwargs["testloader"]
 
         print("Client:",self.id,"\tTrain:",len(self._trainloader.dataset),"\tTest:",len(self._testloader.dataset))
@@ -121,6 +120,9 @@ class Client:
 
     def eval(self):
         return self._trainer.test(self._model, self._testloader, self._device)
+    
+    def eval_decoder(self):
+        return self._trainer.test_decoder(self._model, self._global_testloader, self._device)
 
     def save_ckpt(self):
         pass
