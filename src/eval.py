@@ -42,11 +42,11 @@ class NISTAutoencoder(nn.Module):
 
     def forward(self, x):
         z = self.encoder(x)
-        #x_ = self.decoder(z)
+        x_ = self.decoder(z)
         z = z.view(z.size(0), -1)
         pred = self.predictor(z)
         
-        return pred, 0 #x_
+        return pred, x_
 
 class Cifar10Autoencoder(nn.Module):
     def __init__(self):
@@ -167,7 +167,10 @@ if __name__ == '__main__':
                                                                                     args["datadir"],
                                                                                       args["batch_size"],
                                                                                       32)
-    args["test_dataset"] = test_dl_global
+    print("train_dl_global:",len(train_dl_global.dataset))
+    print("test_dl_global:",len(test_dl_global.dataset))
+    
+    args["test_dl_global"] = test_dl_global
 
     if args["dataset"] in ["mnist","fmnist","femnist"]:
         model = NISTAutoencoder()
@@ -187,7 +190,7 @@ if __name__ == '__main__':
     server = Server(**args)
     clients = {}
 
-    data_loaders = get_client_dataloader(args["dataset"], args["datadir"], args['batch_size'], 32, net_dataidx_map)
+    data_loaders, test_loaders = get_client_dataloader(args["dataset"], args["datadir"], args['batch_size'], 32, net_dataidx_map)
 
     criterion_pred = torch.nn.CrossEntropyLoss()
     criterion_rep = torch.nn.MSELoss()
@@ -202,7 +205,9 @@ if __name__ == '__main__':
         args["id"] = id
         # args["trainloader"], _, _, _ = get_dataloader(args["dataset"], args["datadir"], args['batch_size'], 32, dataidxs)
         args["trainloader"] = data_loaders[id]
+        args["testloader"] = test_loaders[id]
         args["model"] = copy.deepcopy(model)
+        print("Client:",id)
         clients[id] = Client(**args)
 
     simulator = MTFLEnv(server=server, clients=clients, communication_rounds=args["comm_round"],n_clients= args["n_clients"],sample_rate=args["sample"])

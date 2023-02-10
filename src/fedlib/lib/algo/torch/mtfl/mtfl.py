@@ -100,9 +100,27 @@ class Trainer(BaseTrainer):
                         globa_encoder[key] += net_para[key] * fed_avg_freqs[idx]
 
             return globa_encoder
+    
+    def test_decoder(self, model, test_data, device):
+
+        model.to(device)
+        model.eval()
+
+        criterion = torch.nn.MSELoss()
+        total_loss = 0
+        batches = 0
+        with torch.no_grad():
+            for _, (x, _) in enumerate(test_data):
+                
+                x = x.to(device)
+                _, x_ = model(x)
+                loss = criterion(x_, x)
+                total_loss += loss
+                batches += 1
+
+        return total_loss
 
     def test(self, model, test_data, device):
-        
 
         model.to(device)
         model.eval()
