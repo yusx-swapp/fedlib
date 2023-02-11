@@ -16,3 +16,4 @@ demo/data/*
 *.out
 *.err
 .DS_Store
+data/
