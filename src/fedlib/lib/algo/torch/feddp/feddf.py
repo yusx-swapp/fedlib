@@ -3,7 +3,8 @@ from torch import nn
 from torchvision import transforms
 from .....utils import get_logger
 from ...base import BaseTrainer
-logger = get_logger()
+import numpy as np
+# logger = get_logger()
 
 class Trainer(BaseTrainer):
     def __init__(self,logger=None) -> None:
@@ -11,7 +12,7 @@ class Trainer(BaseTrainer):
         self.logger = logger
 
     # 
-    def train(self, model:nn.Module, dataloader , criterion, optimizer, scheduler, epochs:int, device):
+    def train(self, model:nn.Module, dataloader , criterion, optimizer, scheduler, epochs:int, pruning_threshold:float, device):
         """training an autoencoder 
 
         Args:
@@ -55,14 +56,16 @@ class Trainer(BaseTrainer):
                 total += labels.size(0)
                 correct += (predicted == labels).sum().item()
             
+            model_sparsity = self.dynamic_pruning(model, threshold=pruning_threshold)
 
             epoch_loss.append(sum(batch_loss) / len(batch_loss) if batch_loss else 0)
             
             accuracy = correct / total
 
+            print('Epoch: {}\tLoss: {:.6f}\tAccuracy:{:.6f}'.format(epoch, sum(epoch_loss) / len(epoch_loss)), accuracy)
             if self.logger is not None:
-                logger.info('Epoch: {}\tLoss: {:.6f}\tAccuracy:{:.6f}'.format(
-                    epoch, sum(epoch_loss) / len(epoch_loss)), accuracy)
+                self.logger.info('Epoch: {}\tLoss: {:.6f}\tAccuracy:{:.6f}\tModel sparsity: {:.2f}%'.format(
+                    epoch, sum(epoch_loss) / len(epoch_loss)), accuracy,model_sparsity*100)
         
         
 
@@ -97,13 +100,24 @@ class Trainer(BaseTrainer):
 
     def dynamic_pruning(self,model:nn.Module, threshold=1e-3):
         # Prune all the conv layers of the model
+        layer_wise_sparsity = []
         for name, module in model.named_modules():
             if isinstance(module, nn.Conv2d):
                 mask = torch.abs(module.weight) > threshold
                 module.weight.data[~mask] = 0
+                module_sparsity = 1 - float(torch.sum(module.weight.data != 0)) / float(module.weight.data.nelement())
+                layer_wise_sparsity.append(module_sparsity)
+                print('Layer: {}, Sparsity: {:.2f}%'.format(name, module_sparsity*100))
 
+                if self.logger:
+                    self.logger.info('Layer: {}, Sparsity: {:.2f}%'.format(name, module_sparsity*100))
         
+        model_sparsity = np.mean(layer_wise_sparsity)
+        print('Model sparsity: {:.2f}%'.format(model_sparsity*100))
 
+        if self.logger:
+            self.logger.info('Model sparsity: {:.2f}%'.format(model_sparsity*100))
+        return model_sparsity
 
     def test(self, model, test_data, device):
 
