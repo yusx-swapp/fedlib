@@ -1,8 +1,8 @@
 import torch
 from torch import nn
 from torchvision import transforms
-from .....utils import get_logger
-from ...base import BaseTrainer
+from ....utils import get_logger
+from ..base import BaseTrainer
 logger = get_logger()
 
 class Trainer(BaseTrainer):
