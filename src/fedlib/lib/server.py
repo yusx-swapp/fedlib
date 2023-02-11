@@ -31,7 +31,7 @@ class Server:
         pass
    
     def client_sample(self, **kwargs):
-        self._sample_fn(kwargs)
+        self._sample_fn(**kwargs)
 
 
     def get_global_model(self):
