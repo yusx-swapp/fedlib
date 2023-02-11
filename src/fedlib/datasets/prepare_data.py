@@ -545,9 +545,7 @@ def get_client_dataloader(dataset, datadir, train_bs, test_bs, dataidxs=None, no
             print("key:",key,"\t, dataid",len(dataid), "train_ds:",len(train_ds), "test_ds:",len(test_ds))
             total_train += len(train_ds)
             total_test += len(test_ds)
-        #Phuong 09/26 drop_last=False -> True
             train_dl = data.DataLoader(dataset=train_ds, batch_size=train_bs, shuffle=True, drop_last=True)     
-        #Phuong 09/26 drop_last=False -> True
             test_dl = data.DataLoader(dataset=test_ds, batch_size=test_bs, shuffle=False, drop_last=True)
             train_loaders.append(train_dl)
             test_loaders.append(test_dl)
