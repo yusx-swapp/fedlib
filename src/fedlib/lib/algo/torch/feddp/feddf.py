@@ -27,44 +27,43 @@ class Trainer(BaseTrainer):
         
         model.to(device)
         model.train()
-        criterion_pred, criterion_rep = criterion["criterion_pred"], criterion["criterion_rep"]
         epoch_loss = []
+
         for epoch in range(epochs):
+            scheduler.step()
+            correct = 0
+            total = 0
             batch_loss = []
             for batch_idx, (x, labels) in enumerate(dataloader):
                 x, labels = x.to(device), labels.to(device)
                 
-                model.zero_grad()
                 
   
                 
-                pred_out, decodes_out = model(x)\
-
-                loss1 = criterion_pred(pred_out, labels)
-                loss2 = criterion_rep(decodes_out, x)
-                loss = loss1 + loss2
-
-                loss.backward()
+                pred = model(x)
+                loss = criterion(pred, labels)
 
                 # to avoid nan loss
                 # torch.nn.utils.clip_grad_norm_(self.model.parameters(), 0.5)
-
+                optimizer.zero_grad()
+                loss.backward()
                 optimizer.step()
+                
                 batch_loss.append(loss.item())
+                
+                _, predicted = torch.max(pred.data, 1)
+                total += labels.size(0)
+                correct += (predicted == labels).sum().item()
             
-            scheduler.step()
 
             epoch_loss.append(sum(batch_loss) / len(batch_loss) if batch_loss else 0)
             
+            accuracy = correct / total
+
             if self.logger is not None:
-                logger.info('Epoch: {}\tLoss: {:.6f}'.format(
-                    epoch, sum(epoch_loss) / len(epoch_loss)))
-            scheduler.step()
-            #TODO @Sixing: Need add an argument `save_dir` to save the decoder img
-            # if epoch % 10 == 0:
-            #     pic = self._to_img(output.cpu().data)
-            #     from torchvision.utils import save_image
-            #     save_image(pic, './dc_img/image_{}.png'.format(epoch))
+                logger.info('Epoch: {}\tLoss: {:.6f}\tAccuracy:{:.6f}'.format(
+                    epoch, sum(epoch_loss) / len(epoch_loss)), accuracy)
+        
         
 
 
@@ -95,25 +94,16 @@ class Trainer(BaseTrainer):
                         globa_encoder[key] += net_para[key] * fed_avg_freqs[idx]
 
             return globa_encoder
-    
-    def test_decoder(self, model, test_data, device):
 
-        model.to(device)
-        model.eval()
+    def dynamic_pruning(self,model:nn.Module, threshold=1e-3):
+        # Prune all the conv layers of the model
+        for name, module in model.named_modules():
+            if isinstance(module, nn.Conv2d):
+                mask = torch.abs(module.weight) > threshold
+                module.weight.data[~mask] = 0
 
-        criterion = torch.nn.MSELoss()
-        total_loss = 0
-        batches = 0
-        with torch.no_grad():
-            for _, (x, _) in enumerate(test_data):
-                
-                x = x.to(device)
-                _, x_ = model(x)
-                loss = criterion(x_, x)
-                total_loss += loss
-                batches += 1
+        
 
-        return total_loss
 
     def test(self, model, test_data, device):
 
@@ -149,17 +139,6 @@ class Trainer(BaseTrainer):
                 pred, _ = model(x)
                 loss = criterion(pred, target)
 
-                # if args.dataset == "stackoverflow_lr":
-                #     predicted = (pred > 0.5).int()
-                #     correct = predicted.eq(target).sum(axis=-1).eq(target.size(1)).sum()
-                #     true_positive = ((target * predicted) > 0.1).int().sum(axis=-1)
-                #     precision = true_positive / (predicted.sum(axis=-1) + 1e-13)
-                #     recall = true_positive / (target.sum(axis=-1) + 1e-13)
-                #     metrics["test_precision"] += precision.sum().item()
-                #     metrics["test_recall"] += recall.sum().item()
-                # else:
-                #     _, predicted = torch.max(pred, 1)
-                #     correct = predicted.eq(target).sum()
                 _, predicted = torch.max(pred, 1)
                 correct = predicted.eq(target).sum()
                 metrics["test_correct"] += correct.item()
@@ -172,21 +151,5 @@ class Trainer(BaseTrainer):
         metrics["test_accuracy"] = metrics["test_correct"] / len(test_data.dataset)
         return metrics
 
-    def _to_img(self, img, transform = None):
-        if transforms is None:
-            transform = transforms.Compose([
-                transforms.ToTensor(),
-                transforms.Lambda(lambda x: torch.nn.functional.pad(
-                    torch.autograd.variable.Variable(x.unsqueeze(0), requires_grad=False),
-                    (4, 4, 4, 4), mode='reflect').data.squeeze()),
-                transforms.ToPILImage(),
-                transforms.RandomCrop(32, padding=4),
-                transforms.RandomHorizontalFlip(),
-                transforms.ToTensor(),
-                # Phuong 09/26 change (mean, std) -> same as pretrained imagenet
-                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
-                # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
 
-            ])
-        return transform(img)
 
