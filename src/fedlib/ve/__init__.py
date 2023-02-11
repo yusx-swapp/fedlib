@@ -1,2 +1,2 @@
 from .base import BaseSimulator
-from .feddf import FEDDFEnv
+from .feddp import FEDDFEnv

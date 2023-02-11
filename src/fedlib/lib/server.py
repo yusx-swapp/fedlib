@@ -20,7 +20,7 @@ class Server:
             self._communicator.server()
     
     def _aggregate(self,**kwargs):
-        self._trainer.aggregate(kwargs)
+        self._trainer.aggregate(**kwargs)
 
     def _server_update(self, **kwargs):
         self._aggregate(self.communication())
@@ -31,7 +31,7 @@ class Server:
         pass
    
     def client_sample(self, **kwargs):
-        self._sample_fn(**kwargs)
+        return self._sample_fn(**kwargs)
 
 
     def get_global_model(self):
@@ -40,6 +40,11 @@ class Server:
     def set_global_model(self, model):
         self._global_model = model
 
+    def get_global_model_params(self):
+        return self._global_model.cpu().state_dict()
+
+    def set_global_model_params(self, model_parameters):
+        self._global_model.load_state_dict(model_parameters)
 
     def _validate(self):
         self._trainer.test()

@@ -31,7 +31,6 @@ class Trainer(BaseTrainer):
         epoch_loss = []
 
         for epoch in range(epochs):
-            scheduler.step()
             correct = 0
             total = 0
             batch_loss = []
@@ -56,16 +55,17 @@ class Trainer(BaseTrainer):
                 total += labels.size(0)
                 correct += (predicted == labels).sum().item()
             
+            scheduler.step()
             model_sparsity = self.dynamic_pruning(model, threshold=pruning_threshold)
 
             epoch_loss.append(sum(batch_loss) / len(batch_loss) if batch_loss else 0)
             
             accuracy = correct / total
 
-            print('Epoch: {}\tLoss: {:.6f}\tAccuracy:{:.6f}'.format(epoch, sum(epoch_loss) / len(epoch_loss)), accuracy)
+            print('Epoch: {}\tLoss: {:.6f}\tAccuracy:{:.6f}'.format(epoch, sum(epoch_loss) / len(epoch_loss), accuracy))
             if self.logger is not None:
                 self.logger.info('Epoch: {}\tLoss: {:.6f}\tAccuracy:{:.6f}\tModel sparsity: {:.2f}%'.format(
-                    epoch, sum(epoch_loss) / len(epoch_loss)), accuracy,model_sparsity*100)
+                    epoch, sum(epoch_loss) / len(epoch_loss), accuracy,model_sparsity*100))
         
         
 

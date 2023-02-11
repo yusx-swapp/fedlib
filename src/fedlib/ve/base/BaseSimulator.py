@@ -26,9 +26,10 @@ class BaseSimulator:
         pass
 
     def run(self,local_epochs):
-        selected = self.server.client_sample(n_clients= self.n_clients, sample_rate=self.sample_rate)
         
         for round in range(self.communication_rounds):
+            selected = self.server.client_sample(n_clients= self.n_clients, sample_rate=self.sample_rate)
+            print(selected)
             global_model_param = self.server.get_global_model_params()
             nets_params = []
             local_datasize = []

@@ -1,1 +1,1 @@
-from .feddf import Trainer
+from .feddp import Trainer
