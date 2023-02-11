@@ -26,7 +26,7 @@ class Client:
         self._init_optimizer(kwargs["optimizer"])
         self._init_lr_schedular(kwargs["lr_scheduler"])
 
-        self._global_testloader = kwargs["test_dl_global"]
+        # self._global_testloader = kwargs["test_dl_global"]
         self._testloader = kwargs["testloader"]
 
         print("Client:",self.id,"\tTrain:",len(self._trainloader.dataset),"\tTest:",len(self._testloader.dataset))
@@ -123,6 +123,8 @@ class Client:
         return self._trainer.test(self._model, self._testloader, self._device)
     
     def eval_decoder(self):
+        # TODO: integrate this to eval. In Trainer, write two function, test and test decoder, and 
+        # use a new function to call this two functions, and use a parameter to control call which eval function
         return self._trainer.test_decoder(self._model, self._global_testloader, self._device)
 
     def save_ckpt(self):
