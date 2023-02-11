@@ -19,12 +19,16 @@ class Server:
         if self._communicator:
             self._communicator.server()
     
-    def _aggregate(self,**kwargs):
-        self._trainer.aggregate(**kwargs)
 
+    def _aggregate(self,**kwargs):
+        global_params = self._trainer.aggregate(**kwargs)
+        self.set_global_model_params(global_params)
 
     def server_update(self, **kwargs):
         self._aggregate(**kwargs)
+
+    def eval(self,**kwargs):
+        self.trainer.test(model = self._global_model,device = self._device, **kwargs)
 
     @abstractmethod
     def server_run(self, test_gap=1):

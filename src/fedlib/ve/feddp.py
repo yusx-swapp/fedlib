@@ -35,7 +35,8 @@ class FEDDFEnv:
             nets_params = []
             local_datasize = []
             self.logger.info('*******starting rounds %s optimization******' % str(round+1))
-            self.logger.info('Participate Clients: %s' % str(round+1))
+            self.logger.info('Participate Clients: %s' % str(selected))
+            
             for id in selected:
                 self.logger.info('optimize the %s-th clients' % str(id))
                 client = self.clients[id]
@@ -49,6 +50,6 @@ class FEDDFEnv:
                 local_datasize.append(client.datasize)
 
             self.server.server_update(nets_params=nets_params, local_datasize=local_datasize,global_model_param= global_model_param)
-            self.server.eval()
+            # self.server.eval()
 
 

@@ -70,33 +70,34 @@ class Trainer(BaseTrainer):
         
 
 
-    def aggregate(self, nets_encoders,local_datasize, globa_encoder ):        
+    def aggregate(self, **kwargs):        
             """fedavg aggregation
             kwargs:
-                nets_encoders: 
+                nets_params: 
                 local_datasize:
-                globa_encoder: 
+                global_para: 
 
             Returns:
-                globa_encoder: _description_
+                global_para: _description_
             """
-            # nets_params = kwargs["nets_params"]
-            # local_datasize = kwargs["local_datasize"]
-            # global_model_param = kwargs["global_model_param"]
+            nets_params = kwargs["nets_params"]
+            local_datasize = kwargs["local_datasize"]
+            global_model_param = kwargs["global_model_param"]
 
             total_data_points = sum(local_datasize)
             fed_avg_freqs = [size/ total_data_points for size in local_datasize]
             
             
-            for idx, net_para in enumerate(nets_encoders):
+            for idx, net_para in enumerate(nets_params):
                 if idx == 0:
                     for key in net_para:
-                        globa_encoder[key] = net_para[key] * fed_avg_freqs[idx]
+                        global_model_param[key] = net_para[key] * fed_avg_freqs[idx]
                 else:
                     for key in net_para:
-                        globa_encoder[key] += net_para[key] * fed_avg_freqs[idx]
+                        global_model_param[key] += net_para[key] * fed_avg_freqs[idx]
 
-            return globa_encoder
+            return global_model_param
+
 
     def dynamic_pruning(self,model:nn.Module, threshold=1e-3):
         # Prune all the conv layers of the model
