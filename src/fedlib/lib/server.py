@@ -22,9 +22,10 @@ class Server:
     def _aggregate(self,**kwargs):
         self._trainer.aggregate(**kwargs)
 
-    def _server_update(self, **kwargs):
-        self._aggregate(self.communication())
-    
+
+    def server_update(self, **kwargs):
+        self._aggregate(**kwargs)
+
     @abstractmethod
     def server_run(self, test_gap=1):
         #Add a listen to receive sockets from clients
