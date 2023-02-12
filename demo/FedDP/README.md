@@ -44,15 +44,24 @@ If you are familiar with Docker, please follow the instructions in the `Docker/`
 
 We provided user-friendly interface to run our experiments and extend our method to customized applications.
 
-All our parameters are stored in a `*.ini` files under the folder [./config/config.ini](config/config.ini)
+All our parameters are stored in a `*.ini` files under the folder [./config/config.ini](config/config.ini).
+To run our experiment on CIFAR-10 under Non-IID setting and 100 clients with 10% random participate rate, you could run the following command in your terminal:
+
+```
+python eval.py --cf config/config.ini
+```
+You could change the parameters in [./config/config.ini](config/config.ini) to reproduce more our experiments, for instance, you could change the `pruning_threshold = 1e-2` to try different dynamic pruning rate.
+
+The running results would output to your terminal via logger object.
+
+## Run demo via Jupyter Notebook
 
 We have provide step-by-step instruction on [demo.ipynb](demo.ipynb) for simply run FedDP and how to use the `FedLib`.
 
-If you want to further reproduce our experiments, for instance, FedDF on ResNet-20 and CIFAR-100 with 100 clients and 10% random client participation rate in each round, simply exceute the following command:
 
 ### Run experiments on other dataset
 
-We defaultly provide experiments running option on CIFAR-10/100. If you want to repreduce our experiments on Tiny ImageNet or CINIC-10, please download it first, then change the argument `datadir` in `*.yaml` file.
+We defaultly provide experiments running option on CIFAR-10/100. If you want to repreduce our experiments on Tiny ImageNet or CINIC-10, please download it first, then write your `data root path` to the argument `datadir` in `*.ini` file.
 
 ## Acknowledgment
 
