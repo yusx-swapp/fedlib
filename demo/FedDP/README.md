@@ -2,11 +2,7 @@
 
 This is the implementation for the paper: **Heterogeneous Federated Learning using Dynamic Model Pruning and Adaptive Gradient**
 
-
-```
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.7633920.svg)](https://doi.org/10.5281/zenodo.7633920)
-```
-
 
 ## Dependencies
 
