@@ -1,4 +1,9 @@
+import copy
 from typing import Dict
+
+from ..datasets.prepare_data import partition_data, get_client_dataloader
+
+from ..networks import *
 from ..lib.server import Server
 from ..lib.client import Client
 from ..utils import get_logger
@@ -55,7 +60,45 @@ class FEDDFEnv:
 
             self.server.server_update(nets_params=nets_params, local_datasize=local_datasize,global_model_param= global_model_param)
             metrics = self.server.eval()
-            self.logger.info('Model Test Accuracy After Server Aggregation: %s ' % str(metrics["test_accuracy"]))
+            self.logger.info('*******Model Test Accuracy After Server Aggregation: %s *******' % str(metrics["test_accuracy"]))
             self.logger.info('*******Rounds %s Federated Learning Finished!******' % str(round+1))
 
 
+def init_model(model_args):
+    
+    if model_args.model == 'resnet20':
+        return resnet20()
+    else:
+        raise NotImplementedError
+
+def init_server(server_args,global_model,trainer,test_dataset,communicator=None):
+    
+    server = Server(n_clients = server_args.n_clients, global_model= global_model,
+                    device = server_args.device, sample_fn = server_args.sample_fn,
+                    trainer = trainer,communicator = communicator,test_dataset=test_dataset)
+    
+    return server
+def init_clients(client_args,model,data_loaders,testloader,trainer,communicator=None):
+    clients = {}
+
+
+    for id in range(client_args.n_clients):
+        local_model = copy.deepcopy(model)
+        clients[id] = Client(id=id,model=local_model,trainloader = data_loaders[id],
+                            testloader=testloader,lr=client_args.lr,trainer=trainer,
+                            device=client_args.device,communicator = communicator,
+                            criterion=client_args.criterion,optimizer=client_args.optimizer,
+                            lr_scheduler = client_args.lr_scheduler)
+
+    return clients
+
+
+def init_dataset(data_args):
+
+    X_train, y_train, X_test, y_test, net_dataidx_map, traindata_cls_counts = partition_data(data_args.dataset, data_args.datadir, \
+                                                                                            data_args.partition, data_args.n_clients, \
+                                                                                            data_args.beta)
+    
+    data_loaders, global_test_dl, test_loaders = get_client_dataloader(data_args.dataset, data_args.datadir, data_args.batch_size, data_args.n_worker, net_dataidx_map)
+
+    return data_loaders, global_test_dl, test_loaders

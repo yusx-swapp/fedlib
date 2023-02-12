@@ -1,5 +1,5 @@
 from .logs import *
-from .arguments import parse_args
+from .arguments import Arguments
 import os
 def mkdirs(dirpath):
     try:

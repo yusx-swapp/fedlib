@@ -15,6 +15,7 @@ class Client:
         self.id = kwargs["id"]
         self._model = kwargs["model"]
         self._trainloader = kwargs["trainloader"]
+        self._testloader = kwargs["testloader"]
         self._lr = kwargs["lr"]
 
         self.datasize = len(self._trainloader.dataset)
@@ -22,12 +23,11 @@ class Client:
         self._device = kwargs["device"]
         self._communicator = kwargs["communicator"]
         
-        self.criterion = kwargs["criterion"]
+        self._init_criterion(kwargs["criterion"])
         self._init_optimizer(kwargs["optimizer"])
         self._init_lr_schedular(kwargs["lr_scheduler"])
 
         # self._global_testloader = kwargs["test_dl_global"]
-        self._testloader = kwargs["testloader"]
         
 
     def _init_optimizer(self,optimizer_name:str) -> None:
@@ -55,6 +55,22 @@ class Client:
         else:
             raise KeyError
 
+    def _init_criterion(self, criterion_name:str) -> None:
+        """_summary_
+
+        Args:
+            criterion_name (str): _description_
+
+        Raises:
+            KeyError: _description_
+            NotImplementedError: _description_
+        """
+        if not criterion_name:
+            raise KeyError("Please Specify Criterion")
+        elif criterion_name.lower() == 'CrossEntropyLoss'.lower():
+            self.criterion = torch.nn.CrossEntropyLoss()
+        else:
+            raise NotImplementedError
 
     def _communication(self):
         self._communicator.communication()

@@ -1,12 +1,13 @@
 from abc import abstractmethod
-
+from fedlib.lib.sampler import *
 
 class Server:
     def __init__(self,**kwargs) -> None:
         self._n_clients = kwargs["n_clients"]
         self._global_model = kwargs["global_model"]
         self._device = kwargs["device"]
-        self._sample_fn = kwargs["sample_fn"]
+        
+        self._init_sampler(kwargs["sampler"])
         
         self._trainer = kwargs["trainer"]
         self._communicator = kwargs["communicator"]
@@ -17,6 +18,18 @@ class Server:
         '''initialize key pair'''
         self._key_generator()
     
+
+    def _init_sampler(self,sampler_name:str) -> None:
+        """_summary_
+
+        Args:
+            optmizer_name (str): _description_
+        """
+        if sampler_name.lower() == "random":
+            self.sampler = random_sampler
+        else:
+            raise KeyError("currently only support random sampler")
+
     def _communication(self):
         if self._communicator:
             self._communicator.server()
@@ -38,7 +51,7 @@ class Server:
         pass
    
     def client_sample(self, **kwargs):
-        return self._sample_fn(**kwargs)
+        return self.sampler(**kwargs)
 
 
     def get_global_model(self):

@@ -44,26 +44,22 @@ If you are familiar with Docker, please follow the instructions in the `Docker/`
 
 We provided user-friendly interface to run our experiments and extend our method to customized applications.
 
-All our parameters are stored in a `*.yaml` files under the folder `src/config`
+All our parameters are stored in a `*.ini` files under the folder [./config/config.ini](config/config.ini)
 
 We have provide step-by-step instruction on [demo.ipynb](demo.ipynb) for simply run FedDP and how to use the `FedLib`.
 
-
 If you want to further reproduce our experiments, for instance, FedDF on ResNet-20 and CIFAR-100 with 100 clients and 10% random client participation rate in each round, simply exceute the following command:
-
 
 ### Run experiments on other dataset
 
 We defaultly provide experiments running option on CIFAR-10/100. If you want to repreduce our experiments on Tiny ImageNet or CINIC-10, please download it first, then change the argument `datadir` in `*.yaml` file.
-
-
-
 
 ## Acknowledgment
 
 Authored by Phd Student Sixing Yu at SwAPP Lab, Department of Computer Science, Iowa State University.
 
 If you are using our work please cite:
+
 ```
 @misc{yu2023feddp,
   doi = {10.48550/ARXIV.2106.06921},
@@ -75,6 +71,7 @@ If you are using our work please cite:
   copyright = {arXiv.org perpetual, non-exclusive license}
 }
 ```
+
 ## License
 
 MIT License
