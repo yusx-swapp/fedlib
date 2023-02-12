@@ -7,11 +7,13 @@ class Server:
         self._global_model = kwargs["global_model"]
         self._device = kwargs["device"]
         self._sample_fn = kwargs["sample_fn"]
-        # self._aggregate_fn = kwargs["aggregate_fn"]
+        
         self._trainer = kwargs["trainer"]
         self._communicator = kwargs["communicator"]
 
         self._test_dataset = kwargs["test_dataset"]
+        
+
         '''initialize key pair'''
         self._key_generator()
     
@@ -28,7 +30,7 @@ class Server:
         self._aggregate(**kwargs)
 
     def eval(self,**kwargs):
-        self.trainer.test(model = self._global_model,device = self._device, **kwargs)
+        self.trainer.test(model = self._global_model,test_data=self._test_dataset,device = self._device, **kwargs)
 
     @abstractmethod
     def server_run(self, test_gap=1):

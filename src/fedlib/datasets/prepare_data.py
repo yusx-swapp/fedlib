@@ -411,146 +411,137 @@ def partition_data(dataset, datadir,  partition, n_parties, beta=0.4,logdir =Non
     traindata_cls_counts = record_net_data_stats(y_train, net_dataidx_map, logdir)
     return (X_train, y_train, X_test, y_test, net_dataidx_map, traindata_cls_counts)
 
-def get_client_dataloader(dataset, datadir, train_bs, test_bs, dataidxs=None, noise_level=0, net_id=None, total=0, n_worker=32):
-    if dataset in ('mnist', 'femnist', 'fmnist', 'cifar100','cifar10', 'svhn', 'generated', 'covtype', 'a9a', 'rcv1', 'SUSY'):
-        if dataset == 'mnist':
-            dl_obj = MNIST_truncated
+def get_client_dataloader(dataset, datadir, train_bs, test_bs, dataidxs=None, noise_level=0, net_id=None, n_clients=0, local_test_loader = False,n_worker=32):
+    assert dataset in ('mnist', 'femnist', 'fmnist', 'cifar100','cifar10', 'svhn', 'generated', 'covtype', 'a9a', 'rcv1', 'SUSY')
+    if dataset == 'mnist':
+        dl_obj = MNIST_truncated
 
-            transform_train = transforms.Compose([
-                transforms.ToTensor(),
-                AddGaussianNoise(0., noise_level, net_id, total)])
+        transform_train = transforms.Compose([
+            transforms.ToTensor(),
+            AddGaussianNoise(0., noise_level, net_id, n_clients)])
 
-            transform_test = transforms.Compose([
-                transforms.ToTensor(),
-                AddGaussianNoise(0., noise_level, net_id, total)])
+        transform_test = transforms.Compose([
+            transforms.ToTensor(),
+            AddGaussianNoise(0., noise_level, net_id, n_clients)])
 
-        elif dataset == 'femnist':
-            dl_obj = FEMNIST
+    elif dataset == 'femnist':
+        dl_obj = FEMNIST
 
-            # Additional transformation from grayscale -> RGB needed here
-            transform_train = transforms.Compose([
-                transforms.ToTensor(),
-                AddGaussianNoise(0., noise_level, net_id, total),
-                transforms.Lambda(lambda x: x.repeat(3, 1, 1))])
-            transform_test = transforms.Compose([
-                transforms.ToTensor(),
-                AddGaussianNoise(0., noise_level, net_id, total),
-                transforms.Lambda(lambda x: x.repeat(3, 1, 1))])
+        # Additional transformation from grayscale -> RGB needed here
+        transform_train = transforms.Compose([
+            transforms.ToTensor(),
+            AddGaussianNoise(0., noise_level, net_id, n_clients),
+            transforms.Lambda(lambda x: x.repeat(3, 1, 1))])
+        transform_test = transforms.Compose([
+            transforms.ToTensor(),
+            AddGaussianNoise(0., noise_level, net_id, n_clients),
+            transforms.Lambda(lambda x: x.repeat(3, 1, 1))])
 
-        elif dataset == 'fmnist':
-            dl_obj = FashionMNIST_truncated
-            transform_train = transforms.Compose([
-                transforms.ToTensor(),
-                AddGaussianNoise(0., noise_level, net_id, total)])
-            transform_test = transforms.Compose([
-                transforms.ToTensor(),
-                AddGaussianNoise(0., noise_level, net_id, total)])
+    elif dataset == 'fmnist':
+        dl_obj = FashionMNIST_truncated
+        transform_train = transforms.Compose([
+            transforms.ToTensor(),
+            AddGaussianNoise(0., noise_level, net_id, n_clients)])
+        transform_test = transforms.Compose([
+            transforms.ToTensor(),
+            AddGaussianNoise(0., noise_level, net_id, n_clients)])
 
-        elif dataset == 'svhn':
-            dl_obj = SVHN_custom
-            transform_train = transforms.Compose([
-                transforms.ToTensor(),
-                AddGaussianNoise(0., noise_level, net_id, total)])
-            transform_test = transforms.Compose([
-                transforms.ToTensor(),
-                AddGaussianNoise(0., noise_level, net_id, total)])
+    elif dataset == 'svhn':
+        dl_obj = SVHN_custom
+        transform_train = transforms.Compose([
+            transforms.ToTensor(),
+            AddGaussianNoise(0., noise_level, net_id, n_clients)])
+        transform_test = transforms.Compose([
+            transforms.ToTensor(),
+            AddGaussianNoise(0., noise_level, net_id, n_clients)])
 
-        elif dataset == 'cifar100':
-            dl_obj = CIFAR100_truncated
-            transform_train = transforms.Compose([
-                transforms.ToTensor(),
-                transforms.Lambda(lambda x: F.pad(
-                    Variable(x.unsqueeze(0), requires_grad=False),
-                    (4, 4, 4, 4), mode='reflect').data.squeeze()),
-                transforms.ToPILImage(),
-                transforms.RandomCrop(32, padding=4),
-                transforms.RandomHorizontalFlip(),
-                transforms.ToTensor(),
-                # Phuong 09/26 change (mean, std) -> same as pretrained imagenet
-                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
-                # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+    elif dataset == 'cifar100':
+        dl_obj = CIFAR100_truncated
+        transform_train = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Lambda(lambda x: F.pad(
+                Variable(x.unsqueeze(0), requires_grad=False),
+                (4, 4, 4, 4), mode='reflect').data.squeeze()),
+            transforms.ToPILImage(),
+            transforms.RandomCrop(32, padding=4),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            # Phuong 09/26 change (mean, std) -> same as pretrained imagenet
+            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+            # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
 
-            ])
-            # data prep for test set
-            transform_test = transforms.Compose([
-                transforms.ToTensor(),
-                # Phuong 09/26 change (mean, std) -> same as pretrained imagenet
-                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
-                # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
-            ])
-            # cifar_tran_train = [
-            #     transforms.RandomCrop(32, padding=4),
-            #     transforms.RandomHorizontalFlip(),
-            #     transforms.ToTensor(),
-            #     transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
-            # ]
-            # cifar_tran_test = [
-            #     transforms.ToTensor(),
-            #     transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
-            # ]
-            # transform_train = transforms.Compose(cifar_tran_train)
-            # transform_test = transforms.Compose(cifar_tran_test)
-            # train_ds = torchvision.datasets.CIFAR100(root=datadir, train=True, download=True,
-            #                                          transform=transform_train)
-            # train_dl = torch.utils.data.DataLoader(train_ds, batch_size=train_bs, shuffle=True,
-            #                                            num_workers=n_worker, pin_memory=True, sampler=None)
-            # test_ds = torchvision.datasets.CIFAR100(root=datadir, train=False, download=True,
-            #                                         transform=transform_test)
-            # test_dl = torch.utils.data.DataLoader(test_ds, batch_size=test_bs, shuffle=False,
-            #                                          num_workers=n_worker, pin_memory=True)
-            # return train_dl, test_dl, train_ds,
-        elif dataset == 'cifar10':
-            dl_obj = CIFAR10_truncated
+        ])
+        # data prep for test set
+        transform_test = transforms.Compose([
+            transforms.ToTensor(),
+            # Phuong 09/26 change (mean, std) -> same as pretrained imagenet
+            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+            # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+        ])
 
-            transform_train = transforms.Compose([
-                transforms.ToTensor(),
-                transforms.Lambda(lambda x: F.pad(
-                    Variable(x.unsqueeze(0), requires_grad=False),
-                    (4, 4, 4, 4), mode='reflect').data.squeeze()),
-                transforms.ToPILImage(),
-                transforms.RandomCrop(32, padding=4),
-                transforms.RandomHorizontalFlip(),
-                transforms.ToTensor(),
-                # Phuong 09/26 change (mean, std) -> same as pretrained imagenet
-                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
-                # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+    elif dataset == 'cifar10':
+        dl_obj = CIFAR10_truncated
 
-            ])
-            # data prep for test set
-            transform_test = transforms.Compose([
-                transforms.ToTensor(),
-                # Phuong 09/26 change (mean, std) -> same as pretrained imagenet
-                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
-                # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
-            ])
+        transform_train = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Lambda(lambda x: F.pad(
+                Variable(x.unsqueeze(0), requires_grad=False),
+                (4, 4, 4, 4), mode='reflect').data.squeeze()),
+            transforms.ToPILImage(),
+            transforms.RandomCrop(32, padding=4),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            # Phuong 09/26 change (mean, std) -> same as pretrained imagenet
+            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+            # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+
+        ])
+        # data prep for test set
+        transform_test = transforms.Compose([
+            transforms.ToTensor(),
+            # Phuong 09/26 change (mean, std) -> same as pretrained imagenet
+            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+            # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+        ])
+
+    else:
+        dl_obj = Generated
+        transform_train = None
+        transform_test = None
+
+    train_loaders = []
+    local_test_loaders = []
+    total_train,total_test = 0, 0
+
+    train_ds = dl_obj(datadir, train=True, transform=transform_train, download=True)
+    
+    test_ds = dl_obj(datadir, train=False, transform=transform_test, download=True)
+
+    global_test_dl = data.DataLoader(dataset=test_ds, batch_size=test_bs, shuffle=False, drop_last=True)
+
+    for key, dataid in dataidxs.items():
+        
+
+        
+        total_train += len(train_ds)
+        total_test += len(test_ds)
+        if local_test_loader:
+            train_dl = data.DataLoader(dataset=torch.utils.data.Subset(train_ds, dataid[:0.8*len(dataid)]), batch_size=train_bs, shuffle=True, drop_last=True)     
+            local_test_dl = data.DataLoader(dataset=torch.utils.data.Subset(train_ds, dataid[0.8*len(dataid):]), batch_size=train_bs, shuffle=True, drop_last=True)    
+            local_test_loaders.append(local_test_dl)
+            print("Client ID:",key, ",\tLocal Train Data Size:",len(train_ds), ",\tLocal Test Data Size:",len(test_ds))
 
         else:
-            dl_obj = Generated
-            transform_train = None
-            transform_test = None
+            train_dl = data.DataLoader(dataset=torch.utils.data.Subset(train_ds, dataid), batch_size=train_bs, shuffle=True, drop_last=True)   
+            print("Client ID:",key, ",\tLocal Train Data Size:",len(train_dl.dataset),len(dataid))  
+        train_loaders.append(train_dl)
 
-
-        # if dataidxs is not None:
-        #     train_ds = dl_obj(datadir, dataidxs=dataidxs[:int(len(dataidxs)*0.8)], train=True, transform=transform_train, download=True)
-        #     test_ds = dl_obj(datadir, train=True,dataidxs=dataidxs[int(len(dataidxs)*0.8):], transform=transform_test, download=True)
-        # else:
-        #     train_ds = dl_obj(datadir, dataidxs=dataidxs, train=True, transform=transform_train, download=True)
-        #     test_ds = dl_obj(datadir, train=False, transform=transform_test, download=True)
-        train_loaders = []
-        test_loaders = []
-        total_train,total_test = 0, 0
-        for key, dataid in dataidxs.items():
-            train_ds = dl_obj(datadir, dataidxs=dataid[:int(len(dataid)*0.8)], train=True, transform=transform_train, download=True)
-            test_ds = dl_obj(datadir, dataidxs=dataid[int(len(dataid)*0.8):], transform=transform_test, download=True)
-            print("key:",key,"\t, dataid",len(dataid), "train_ds:",len(train_ds), "test_ds:",len(test_ds))
-            total_train += len(train_ds)
-            total_test += len(test_ds)
-            train_dl = data.DataLoader(dataset=train_ds, batch_size=train_bs, shuffle=True, drop_last=True)     
-            test_dl = data.DataLoader(dataset=test_ds, batch_size=test_bs, shuffle=False, drop_last=True)
-            train_loaders.append(train_dl)
-            test_loaders.append(test_dl)
-        print("Total train:",total_train,"\t Total test:",total_test)
-    return train_loaders, test_loaders
+    
+    # print("Total train:",total_train,"\t Total test:",total_test)
+    
+    
+    
+    return train_loaders, global_test_dl, local_test_loaders
 
 
 def get_dataloader(dataset, datadir, train_bs, test_bs, dataidxs=None, noise_level=0, net_id=None, total=0, n_worker=32):

@@ -34,11 +34,11 @@ class FEDDFEnv:
             global_model_param = self.server.get_global_model_params()
             nets_params = []
             local_datasize = []
-            self.logger.info('*******starting rounds %s optimization******' % str(round+1))
+            self.logger.info('*******starting Rounds %s Optimization******' % str(round+1))
             self.logger.info('Participate Clients: %s' % str(selected))
             
             for id in selected:
-                self.logger.info('optimize the %s-th clients' % str(id))
+                self.logger.info('Optimize the %s-th Clients' % str(id))
                 client = self.clients[id]
                 if id != client.id:
                     raise IndexError("id not match")
@@ -50,6 +50,8 @@ class FEDDFEnv:
                 local_datasize.append(client.datasize)
 
             self.server.server_update(nets_params=nets_params, local_datasize=local_datasize,global_model_param= global_model_param)
-            # self.server.eval()
+            metrics = self.server.eval()
+            self.logger.info('Model Test Accuracy After Server Aggregation: %s ' % str(metrics["test_accuracy"]))
+            self.logger.info('*******Rounds %s Federated Learning Finished!******' % str(round+1))
 
 
