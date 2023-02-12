@@ -1,4 +1,4 @@
-## Build your Docker for SPATL
+## Build your Docker for fedlib
 
 This image is built based on [Docker Pytorch](https://github.com/anibali/docker-pytorch), thanks very much for their
 great efforts.

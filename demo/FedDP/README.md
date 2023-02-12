@@ -32,15 +32,16 @@ cd fedlib_root_dir
 pip install -r requirements.text 
 ```
 
-Finally, install the FedLib:
+Finally, install the FedLib (if you dont know what does the `pip install .` do, please read the [link](https://stackoverflow.com/questions/39023758/what-does-pip-install-dot-mean)):
 
 ```
 cd fedlib_root_dir
 pip install .  
 ```
+In the above command, we installed our local package `fedlib`.
 
 We are all set about software dependencies, to make sure you can running our codes, you may further need a GPU.
-If you are familiar with Docker, please follow the instructions in the `Docker/`, and build a docker image to run our experiments.
+If you are familiar with Docker, please follow the instructions in the [Docker/](../../Docker/README.md), and build a docker image to run our experiments.
 
 ## Reproduce experiments
 
