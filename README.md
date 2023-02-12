@@ -1,4 +1,10 @@
-# ***fedlib* – A Federated Learning Experimental Python Library (V1 Design Overview)**
+# ***fedlib* – A Federated Learning Experimental Python Library (Beta 1)**
+
+
+```
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.7633920.svg)](https://doi.org/10.5281/zenodo.7633920)
+```
+
 
 ## **Introduction**
 
@@ -8,6 +14,7 @@ It raises great challenges for Researchers to test their ideas. Especially in sc
 In ***fedlib***, we aim to provide federated learning engineers and developers a user-friendly federated learning platform to quickly test and run their customized FL algorithm. Additionally, we also target to provide developers easy to use APIs for deploying specialized FL models to real-world applications.
 
 <!-- TODO: add image captions -->
+
 <p align="center">
 <img src="docs/img/overview.svg" alt="design overview" width="500"/>
 </p>
@@ -20,7 +27,6 @@ Above figure shows the design overview of ***fedlib***. We designed 5 abstract c
 
 Functionality: [BaseServer](../src/fedlib/lib/server.py) is a general python class implemented for simulate the federated learning server.
 Must initiate attributes with client sample function, global model, federated learning trainer, and communicator.
-
 
 ```Python
 class Server:   
@@ -76,7 +82,7 @@ class Triner:
     @Must re-write the following functions:
    
     def local_updates(**kwargs)-> nn.Module
-    
+  
     def aggregate(**kwargs)->nn.Module
     ...
 ```
@@ -101,10 +107,11 @@ Functionality: `BaseCommunicator` (Abstract class under designing) is a abstract
 We provide a instance class that inherit the `BaseCommunicator` and achieves the centralize federated learning simulation [RandomSampler](../src/fedlib/simulator/base/BaseSimulator.py).
 
 The class method `run()` provide a fast debug environments for customize FL algorithms and baseline results reproduces.
+
 ```Python
 def run(self,local_epochs):
         selected = self.server.client_sample(n_clients= self.n_clients, sample_rate=self.sample_rate)
-        
+      
         for round in range(self.communication_rounds):
             global_model_param = self.server.get_global_model_params()
             nets_params = []
@@ -116,10 +123,10 @@ def run(self,local_epochs):
                 client = self.clients[id]
                 if id != client.id:
                     raise IndexError("id not match")
-                
+              
                 client.set_model_params(global_model_param)
                 client.client_update( epochs=local_epochs)
-                
+              
                 nets_params.append(client.get_model_params())
                 local_datasize.append(client.datasize)
 
@@ -129,18 +136,18 @@ def run(self,local_epochs):
 
 ## **User guide Visuals**
 
-Demo: https://github.com/yusx-swapp/fedlib/blob/develop/src/eval.ipynb 
+Demo: https://github.com/yusx-swapp/fedlib/blob/develop/src/eval.ipynb
 
 ## Contribution
 
-Sixing Yu: 
+Sixing Yu:
 
-Framework design, FL baseline algorithms Implementation, demo implementation. 
+Framework design, FL baseline algorithms Implementation, demo implementation.
 
-Yixuan Wang: 
+Yixuan Wang:
 
 Abstract class (Client, Server, Communicator) implementation, Sampler implementation, demo debuging.
 
 ## Acknowledgment
-Thanks for Yixuan Wang's help in discussion and docstring writing. 
 
+Thanks for Yixuan Wang's help in discussion and docstring writing.

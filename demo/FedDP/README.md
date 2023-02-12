@@ -2,6 +2,12 @@
 
 This is the implementation for the paper: **Heterogeneous Federated Learning using Dynamic Model Pruning and Adaptive Gradient**
 
+
+```
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.7633920.svg)](https://doi.org/10.5281/zenodo.7633920)
+```
+
+
 ## Dependencies
 
 To reproduce our experiments, please follow the instructions to set up environments:
@@ -50,6 +56,7 @@ To run our experiment on CIFAR-10 under Non-IID setting and 100 clients with 10%
 ```
 python eval.py --cf config/config.ini
 ```
+
 You could change the parameters in [./config/config.ini](config/config.ini) to reproduce more our experiments, for instance, you could change the `pruning_threshold = 1e-2` to try different dynamic pruning rate.
 
 The running results would output to your terminal via logger object.
@@ -57,7 +64,6 @@ The running results would output to your terminal via logger object.
 ## Run demo via Jupyter Notebook
 
 We have provide step-by-step instruction on [demo.ipynb](demo.ipynb) for simply run FedDP and how to use the `FedLib`.
-
 
 ### Run experiments on other dataset
 
