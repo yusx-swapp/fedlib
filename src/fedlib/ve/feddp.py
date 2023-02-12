@@ -2,14 +2,14 @@ import copy
 from typing import Dict
 
 from ..datasets.prepare_data import partition_data, get_client_dataloader
-
+from ..lib.sampler import *
 from ..networks import *
 from ..lib.server import Server
 from ..lib.client import Client
 from ..utils import get_logger
-
+from ..lib.algo import feddp as trainer
 class FEDDFEnv:
-    def __init__(self, server: Server, clients: Dict[int, Client], communication_rounds:int, n_clients: int, sample_rate:float) -> None:
+    def __init__(self, server: Server, clients: Dict[int, Client], communication_rounds:int, n_clients: int, participate_rate:float) -> None:
         """_summary_
 
         Args:
@@ -23,7 +23,7 @@ class FEDDFEnv:
         self.communication_rounds = communication_rounds
         
         self.n_clients = n_clients
-        self.sample_rate = sample_rate
+        self.participate_rate = participate_rate
         self.logger = get_logger()
 
 
@@ -34,7 +34,7 @@ class FEDDFEnv:
     def run(self,local_epochs,pruning_threshold=1e-3):
         
         for round in range(self.communication_rounds):
-            selected = self.server.client_sample(n_clients= self.n_clients, sample_rate=self.sample_rate)
+            selected = self.server.client_sample(n_clients= self.n_clients, sample_rate=self.participate_rate)
             
             global_model_param = self.server.get_global_model_params()
             nets_params = []
@@ -64,6 +64,12 @@ class FEDDFEnv:
             self.logger.info('*******Rounds %s Federated Learning Finished!******' % str(round+1))
 
 
+def init_sampler(sampler_name = 'random'):
+    if sampler_name == 'random':
+        return random_sampler
+
+
+
 def init_model(model_args):
     
     if model_args.model == 'resnet20':
@@ -71,14 +77,14 @@ def init_model(model_args):
     else:
         raise NotImplementedError
 
-def init_server(server_args,global_model,trainer,test_dataset,communicator=None):
+def init_server(server_args,global_model,test_dataset,trainer=trainer(get_logger()),communicator=None):
     
     server = Server(n_clients = server_args.n_clients, global_model= global_model,
-                    device = server_args.device, sample_fn = server_args.sample_fn,
+                    device = server_args.device, sampler = server_args.sampler,
                     trainer = trainer,communicator = communicator,test_dataset=test_dataset)
     
     return server
-def init_clients(client_args,model,data_loaders,testloader,trainer,communicator=None):
+def init_clients(client_args,model,data_loaders,testloader,trainer=trainer(get_logger()),communicator=None):
     clients = {}
 
 
