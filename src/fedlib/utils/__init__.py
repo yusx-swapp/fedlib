@@ -1,7 +1,6 @@
 from .logs import *
-from .arguments import *
+from .arguments import parse_args
 import os
-
 def mkdirs(dirpath):
     try:
         os.makedirs(dirpath)

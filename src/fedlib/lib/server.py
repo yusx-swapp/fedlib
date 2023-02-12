@@ -30,7 +30,7 @@ class Server:
         self._aggregate(**kwargs)
 
     def eval(self,**kwargs):
-        self.trainer.test(model = self._global_model,test_data=self._test_dataset,device = self._device, **kwargs)
+        return self._trainer.test(model = self._global_model,test_data=self._test_dataset,device = self._device, **kwargs)
 
     @abstractmethod
     def server_run(self, test_gap=1):
