@@ -28,8 +28,6 @@ class Client:
 
         # self._global_testloader = kwargs["test_dl_global"]
         self._testloader = kwargs["testloader"]
-
-        print("Client:",self.id,"\tTrain:",len(self._trainloader.dataset),"\tTest:",len(self._testloader.dataset))
         
 
     def _init_optimizer(self,optimizer_name:str) -> None:

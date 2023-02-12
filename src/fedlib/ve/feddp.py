@@ -49,7 +49,9 @@ class FEDDFEnv:
                 nets_params.append(client.get_model_params())
                 local_datasize.append(client.datasize)
 
-                client.eval()
+                metrics = client.eval()
+                self.logger.info(f'*******Client {str(id+1)} Training Finished! Test Accuracy: {str(metrics["test_accuracy"])} ******')
+
 
             self.server.server_update(nets_params=nets_params, local_datasize=local_datasize,global_model_param= global_model_param)
             metrics = self.server.eval()

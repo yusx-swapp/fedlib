@@ -62,7 +62,7 @@ class Trainer(BaseTrainer):
             
             accuracy = correct / total
 
-            print('Epoch: {}\tLoss: {:.6f}\tAccuracy:{:.6f}'.format(epoch, sum(epoch_loss) / len(epoch_loss), accuracy))
+            # print('Epoch: {}\tLoss: {:.6f}\tAccuracy:{:.6f}'.format(epoch, sum(epoch_loss) / len(epoch_loss), accuracy))
             if self.logger is not None:
                 self.logger.info('Epoch: {}\tLoss: {:.6f}\tAccuracy:{:.6f}\tModel sparsity: {:.2f}%'.format(
                     epoch, sum(epoch_loss) / len(epoch_loss), accuracy,model_sparsity*100))
@@ -108,13 +108,13 @@ class Trainer(BaseTrainer):
                 module.weight.data[~mask] = 0
                 module_sparsity = 1 - float(torch.sum(module.weight.data != 0)) / float(module.weight.data.nelement())
                 layer_wise_sparsity.append(module_sparsity)
-                print('Layer: {}, Sparsity: {:.2f}%'.format(name, module_sparsity*100))
+                # print('Layer: {}, Sparsity: {:.2f}%'.format(name, module_sparsity*100))
 
                 if self.logger:
                     self.logger.info('Layer: {}, Sparsity: {:.2f}%'.format(name, module_sparsity*100))
         
         model_sparsity = np.mean(layer_wise_sparsity)
-        print('Model sparsity: {:.2f}%'.format(model_sparsity*100))
+        # print('Model sparsity: {:.2f}%'.format(model_sparsity*100))
 
         if self.logger:
             self.logger.info('Model sparsity: {:.2f}%'.format(model_sparsity*100))
@@ -151,7 +151,7 @@ class Trainer(BaseTrainer):
                 
                 x = x.to(device)
                 target = target.to(device)
-                pred, _ = model(x)
+                pred = model(x)
                 loss = criterion(pred, target)
 
                 _, predicted = torch.max(pred, 1)
