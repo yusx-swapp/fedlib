@@ -1,92 +1,151 @@
-# fedlib
+# ***fedlib* – A Federated Learning Experimental Python Library (Beta 1)**
 
-An experimental virtual environment simulator for federated learning.
 
-## Getting started
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.7633920.svg)](https://doi.org/10.5281/zenodo.7633920)
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+## **Introduction**
 
-## Add your files
+Running federated learning (FL) algorithms requires considerable efforts to set up the decentralized running environments in terms of both hardware and software dependencies.
+It raises great challenges for Researchers to test their ideas. Especially in scaled federated learning, where thousands of edge clients may involved into communication, it would cause researcher spend tons of energy to configure every single edge client.
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
+In ***fedlib***, we aim to provide federated learning engineers and developers a user-friendly federated learning platform to quickly test and run their customized FL algorithm. Additionally, we also target to provide developers easy to use APIs for deploying specialized FL models to real-world applications.
 
+<!-- TODO: add image captions -->
+
+<p align="center">
+<img src="docs/img/overview.svg" alt="design overview" width="500"/>
+</p>
+
+## **Design Overview**
+
+Above figure shows the design overview of ***fedlib***. We designed 5 abstract classes `Sampler`, `Trainer`, `Server`, `Client`, and `Communicator` to implement the general functionality of federated learning, and provide the general federated learning virtual environments for various federated learning solutions.
+
+### **`BaseServer`**
+
+Functionality: [BaseServer](../src/fedlib/lib/server.py) is a general python class implemented for simulate the federated learning server.
+Must initiate attributes with client sample function, global model, federated learning trainer, and communicator.
+
+```Python
+class Server:   
+   
+    @Necessary attributes:
+   
+    _global_model (nn.Module): global model at server
+    _n_clients (int): number of clients
+    _sample_fn (function): function for sample clients to communicate
+    _trainer (Trainer): federated learning algorithm
+    _communicator (Communicator): construct communication between edge and server
+    _test_dataset (nn.DataLoader): test data
+
+    @Optional attributes:
+    _clients_credentials (HashMap): used for verify clients
+    _server_credential (HashMap): server credential
+    ...
 ```
-cd existing_repo
-git remote add origin https://git.las.iastate.edu/yusx/rafl.git
-git branch -M main
-git push -uf origin main
+
+## **`BaseClient`**
+
+Functionality: [BaseClient](../src/fedlib/lib/client.py) is a general python class implemented for simulate the federated learning client.
+Must initiate attributes with local model, local private data, federated learning trainer, local training components,and communicator.
+
+```Python
+class Client:   
+   
+    @Necessary attributes:
+   
+    id (int): client id
+    _model (nn.Module): local model at client
+    _trainer (Trainer): federated learning algorithm
+    _communicator (Communicator): construct communication between edge and server
+    _trainloader (nn.DataLoader): local training dataloader
+    criterion (): loss function
+    _optimizer (str): optimizer name
+
+
+    @Optional attributes:
+    _client_credential (HashMap): used for verify clients
+    _server_credential (HashMap): server credential
+    ...
 ```
 
-## Integrate with your tools
+## **`BaseTrainer`**
 
-- [ ] [Set up project integrations](https://git.las.iastate.edu/yusx/rafl/-/settings/integrations)
+Functionality: [BaseTrainer](../src/fedlib/lib/algo/base/BaseTrainer.py) is a abstract python class implemented for the specific federated learning algorithm.
+Inherent the class must rewrite the `local_updates()` and `aggregate()`  class functions.
 
-## Collaborate with your team
+```Python
+class Triner:   
+   
+    @Must re-write the following functions:
+   
+    def local_updates(**kwargs)-> nn.Module
+  
+    def aggregate(**kwargs)->nn.Module
+    ...
+```
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Automatically merge when pipeline succeeds](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+## **`BaseSampler`**
 
-## Test and Deploy
+Functionality: BaseSampler (Abstract class under designing) is a abstract python class implemented for the specific the local clients sampling strategy.
+We provide a function to randomly sample a partial clients into communication [RandomSampler](../src/fedlib/lib/sampler/random_sample.py).
 
-Use the built-in continuous integration in GitLab.
+```python
+def random_sampler(n_clients, sample_rate):
+    arr = np.arange(n_clients)
+    np.random.shuffle(arr)
+    selected = arr[:int(n_clients * sample_rate)]
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing(SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+    return selected
+```
 
-***
+## **`BaseCommunicator`**
 
-# Editing this README
+Functionality: `BaseCommunicator` (Abstract class under designing) is a abstract python class implemented for construct the communication between local clients and server.
+We provide a instance class that inherit the `BaseCommunicator` and achieves the centralize federated learning simulation [RandomSampler](../src/fedlib/simulator/base/BaseSimulator.py).
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thank you to [makeareadme.com](https://www.makeareadme.com/) for this template.
+The class method `run()` provide a fast debug environments for customize FL algorithms and baseline results reproduces.
 
-## Suggestions for a good README
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+```Python
+def run(self,local_epochs):
+        selected = self.server.client_sample(n_clients= self.n_clients, sample_rate=self.sample_rate)
+      
+        for round in range(self.communication_rounds):
+            global_model_param = self.server.get_global_model_params()
+            nets_params = []
+            local_datasize = []
+            self.logger.info('*******starting rounds %s optimization******' % str(round+1))
 
-## Name
-Choose a self-explaining name for your project.
+            for id in selected:
+                self.logger.info('optimize the %s-th clients' % str(id))
+                client = self.clients[id]
+                if id != client.id:
+                    raise IndexError("id not match")
+              
+                client.set_model_params(global_model_param)
+                client.client_update( epochs=local_epochs)
+              
+                nets_params.append(client.get_model_params())
+                local_datasize.append(client.datasize)
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+            self.server.server_update(nets_params=nets_params, local_datasize=local_datasize,global_model_param= global_model_param)
+            self.server.eval()
+```
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+## **User guide Visuals**
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+Demo: https://github.com/yusx-swapp/fedlib/blob/develop/src/eval.ipynb
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+## Contribution
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+Sixing Yu:
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+Framework design, FL baseline algorithms Implementation, demo implementation.
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+Yixuan Wang:
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+Abstract class (Client, Server, Communicator) implementation, Sampler implementation, demo debuging.
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+## Acknowledgment
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+Thanks for Yixuan Wang's help in discussion and docstring writing.

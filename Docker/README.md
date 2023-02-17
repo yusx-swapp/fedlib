@@ -1,19 +1,18 @@
-## Build your Docker for SPATL
+## Build your Docker for fedlib
 
 This image is built based on [Docker Pytorch](https://github.com/anibali/docker-pytorch), thanks very much for their
 great efforts.
 
 ### Requirements
 
-
 In order to use this image you must have Docker Engine installed. Instructions
 for setting up Docker Engine are
 [available on the Docker website](https://docs.docker.com/engine/installation/).
 
-#### CUDA requirements 
+#### CUDA requirements
 
 If you have a CUDA-compatible NVIDIA graphics card, you can use a CUDA-enabled
-version of the PyTorch image to enable hardware acceleration. 
+version of the PyTorch image to enable hardware acceleration.
 
 Firstly, ensure that you install the appropriate NVIDIA drivers. On Ubuntu,
 I've found that the easiest way of ensuring that you have the right version
@@ -27,7 +26,6 @@ You will also need to install the NVIDIA Container Toolkit to enable GPU device
 access within Docker containers. This can be found at
 [NVIDIA/nvidia-docker](https://github.com/NVIDIA/nvidia-docker).
 
-
 ### Build your images for FedKEMF
 
 Go to where the Dockerfile located `Docker/Dockerfile`. The Docker configuration is written in the Dockerfile.
@@ -35,11 +33,10 @@ Go to where the Dockerfile located `Docker/Dockerfile`. The Docker configuration
 To build your local image, you could simply run the following command:
 
 ```bash
-$  docker build --tag FedKEMF .
+$  docker build --tag fedlib .
 ```
+
 To see a list of images we have on our local machine,  simply run the `docker images` command.
-
-
 
 ### Usage
 
@@ -57,9 +54,8 @@ docker run --rm -it --init \
   --ipc=host \
   --user="$(id -u):$(id -g)" \
   --volume="$PWD:/app" \
-  FedKEMF python3 knowlege_aggregation.py --comm_round=200 --model='resnet20' --dataset=cifar10 --batch-size=128 --epochs=10 --n_parties=100 --sample=0.5 --logdir='./logs/'
-
-  ```
+  fedlib python3 eval.py
+```
 
 Here's a description of the Docker command-line options shown above:
 
@@ -79,6 +75,4 @@ Here's a description of the Docker command-line options shown above:
 
 If you are going to reproduce different experiment results shown in the paper, you can
 change the hyper-parameter arguments, you can find all the listed arguments in the `utils/parameter.py`.
-To run different experiment, you can change the argument in ```python3 knowlege_aggregation.py --xxx xxx ```
-
-
+To run different experiment, you can change the argument in ``python3 knowlege_aggregation.py --xxx xxx ``

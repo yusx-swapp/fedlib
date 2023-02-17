@@ -1,18 +1,29 @@
 import torch
 from torch import nn
 
+from ....utils import get_logger
+from ..base import BaseTrainer
+logger = get_logger()
 
+class Trainer(BaseTrainer):
 
-class Trainer:
+    def train(self, model:nn.Module, dataloader , criterion, optimizer, epochs:int, device):
+        """_summary_
 
-    def train(self, **kwargs):
-
-        model = kwargs["model"]
-        device = kwargs["device"]
-        criterion = kwargs["criterion"]
-        optimizer = kwargs["optimizer"]
-        epochs = kwargs["epochs"]
-        data_loader = kwargs["data_loader"]
+        Args:
+            model (nn.Module): _description_
+            dataloader (_type_): _description_
+            criterion (_type_): _description_
+            optimizer (_type_): _description_
+            epochs (int): _description_
+            device (_type_): _description_
+        """
+        # model = kwargs["model"]
+        # device = kwargs["device"]
+        # criterion = kwargs["criterion"]
+        # optimizer = kwargs["optimizer"]
+        # epochs = kwargs["epochs"]
+        # dataloader = kwargs["dataloader"]
         
         model.to(device)
         model.train()
@@ -20,7 +31,7 @@ class Trainer:
         epoch_loss = []
         for epoch in range(epochs):
             batch_loss = []
-            for batch_idx, (x, labels) in enumerate(data_loader):
+            for batch_idx, (x, labels) in enumerate(dataloader):
                 x, labels = x.to(device), labels.to(device)
                 model.zero_grad()
                 log_probs = model(x)
@@ -31,13 +42,13 @@ class Trainer:
                 # torch.nn.utils.clip_grad_norm_(self.model.parameters(), 0.5)
 
                 optimizer.step()
-                # logging.info('Update Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                #     epoch, (batch_idx + 1) * self.args.batch_size, len(self.local_training_data) * self.args.batch_size,
-                #            100. * (batch_idx + 1) / len(self.local_training_data), loss.item()))
+                if batch_idx % 10 == 0:
+                    logger.info('Update Epoch: {} \tLoss: {:.6f}'.format(
+                        epoch,  loss.item()))
                 batch_loss.append(loss.item())
             epoch_loss.append(sum(batch_loss) / len(batch_loss))
-            # logging.info('Client Index = {}\tEpoch: {}\tLoss: {:.6f}'.format(
-            #     self.client_idx, epoch, sum(epoch_loss) / len(epoch_loss)))
+            logger.info('Epoch: {}\tLoss: {:.6f}'.format(
+                epoch, sum(epoch_loss) / len(epoch_loss)))
 
     def aggregate(self, **kwargs):        
             """fedavg aggregation
@@ -51,7 +62,7 @@ class Trainer:
             """
             nets_params = kwargs["nets_params"]
             local_datasize = kwargs["local_datasize"]
-            global_para = kwargs["global_para"]
+            global_model_param = kwargs["global_model_param"]
 
             total_data_points = sum(local_datasize)
             fed_avg_freqs = [size/ total_data_points for size in local_datasize]
@@ -60,16 +71,15 @@ class Trainer:
             for idx, net_para in enumerate(nets_params):
                 if idx == 0:
                     for key in net_para:
-                        global_para[key] = net_para[key] * fed_avg_freqs[idx]
+                        global_model_param[key] = net_para[key] * fed_avg_freqs[idx]
                 else:
                     for key in net_para:
-                        global_para[key] += net_para[key] * fed_avg_freqs[idx]
+                        global_model_param[key] += net_para[key] * fed_avg_freqs[idx]
 
-            return global_para
+            return global_model_param
 
-    def test(self, test_data, device, args):
+    def test(self, model, test_data, device):
         
-        model = self.model
 
         model.to(device)
         model.eval()
@@ -88,10 +98,11 @@ class Trainer:
         https://towardsdatascience.com/cross-entropy-for-classification-d98e7f974451
         https://github.com/google-research/federated/blob/49a43456aa5eaee3e1749855eed89c0087983541/optimization/stackoverflow_lr/federated_stackoverflow_lr.py#L131
         """
-        if args.dataset == "stackoverflow_lr":
-            criterion = nn.BCELoss(reduction="sum").to(device)
-        else:
-            criterion = nn.CrossEntropyLoss().to(device)
+        # if args.dataset == "stackoverflow_lr":
+        #     criterion = nn.BCELoss(reduction="sum").to(device)
+        # else:
+            # criterion = nn.CrossEntropyLoss().to(device)
+        criterion = nn.CrossEntropyLoss().to(device)
 
         with torch.no_grad():
             for batch_idx, (x, target) in enumerate(test_data):
@@ -100,18 +111,19 @@ class Trainer:
                 pred = model(x)
                 loss = criterion(pred, target)
 
-                if args.dataset == "stackoverflow_lr":
-                    predicted = (pred > 0.5).int()
-                    correct = predicted.eq(target).sum(axis=-1).eq(target.size(1)).sum()
-                    true_positive = ((target * predicted) > 0.1).int().sum(axis=-1)
-                    precision = true_positive / (predicted.sum(axis=-1) + 1e-13)
-                    recall = true_positive / (target.sum(axis=-1) + 1e-13)
-                    metrics["test_precision"] += precision.sum().item()
-                    metrics["test_recall"] += recall.sum().item()
-                else:
-                    _, predicted = torch.max(pred, 1)
-                    correct = predicted.eq(target).sum()
-
+                # if args.dataset == "stackoverflow_lr":
+                #     predicted = (pred > 0.5).int()
+                #     correct = predicted.eq(target).sum(axis=-1).eq(target.size(1)).sum()
+                #     true_positive = ((target * predicted) > 0.1).int().sum(axis=-1)
+                #     precision = true_positive / (predicted.sum(axis=-1) + 1e-13)
+                #     recall = true_positive / (target.sum(axis=-1) + 1e-13)
+                #     metrics["test_precision"] += precision.sum().item()
+                #     metrics["test_recall"] += recall.sum().item()
+                # else:
+                #     _, predicted = torch.max(pred, 1)
+                #     correct = predicted.eq(target).sum()
+                _, predicted = torch.max(pred, 1)
+                correct = predicted.eq(target).sum()
                 metrics["test_correct"] += correct.item()
                 metrics["test_loss"] += loss.item() * target.size(0)
                 if len(target.size()) == 1:  #
