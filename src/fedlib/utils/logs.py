@@ -2,7 +2,7 @@ import logging
 import json
 import os
 
-__all__ = ['get_logger', 'init_logs']
+__all__ = ['get_logger', 'init_logs','mkdirs']
 
 def get_logger():
     logging.basicConfig()
@@ -14,7 +14,7 @@ def get_logger():
 def init_logs(log_file_name, args=None, log_dir=None):
     
     #mkdirs(log_dir)
-    os.makedirs(os.path.dirname(log_dir), exist_ok=True)
+    mkdirs(os.path.dirname(log_dir), exist_ok=True)
 
     argument_path = log_file_name + '-arguments.json'
     log_path = log_file_name + '-results.log'
@@ -38,3 +38,9 @@ def init_logs(log_file_name, args=None, log_dir=None):
     
     
     return logger
+
+def mkdirs(dirpath):
+    try:
+        os.makedirs(dirpath)
+    except Exception as _:
+        pass

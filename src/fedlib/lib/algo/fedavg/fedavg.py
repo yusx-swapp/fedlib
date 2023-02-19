@@ -6,49 +6,62 @@ from ..base import BaseTrainer
 logger = get_logger()
 
 class Trainer(BaseTrainer):
-
-    def train(self, model:nn.Module, dataloader , criterion, optimizer, epochs:int, device):
-        """_summary_
+    def __init__(self,logger=None) -> None:
+        super().__init__()
+        self.logger = logger
+        
+    def train(self, model:nn.Module, dataloader , criterion, optimizer, scheduler, local_epochs:int, device):
+        """training an autoencoder 
 
         Args:
             model (nn.Module): _description_
+            decoder (nn.Modules): _description_
             dataloader (_type_): _description_
             criterion (_type_): _description_
             optimizer (_type_): _description_
+            scheduler (_type_): _description_
             epochs (int): _description_
             device (_type_): _description_
         """
-        # model = kwargs["model"]
-        # device = kwargs["device"]
-        # criterion = kwargs["criterion"]
-        # optimizer = kwargs["optimizer"]
-        # epochs = kwargs["epochs"]
-        # dataloader = kwargs["dataloader"]
         
         model.to(device)
         model.train()
-
         epoch_loss = []
-        for epoch in range(epochs):
+
+        for epoch in range(local_epochs):
+            correct = 0
+            total = 0
             batch_loss = []
             for batch_idx, (x, labels) in enumerate(dataloader):
                 x, labels = x.to(device), labels.to(device)
-                model.zero_grad()
-                log_probs = model(x)
-                loss = criterion(log_probs, labels)
+                
+                
+  
+                
+                pred = model(x)
+                loss = criterion(pred, labels)
+                optimizer.zero_grad()
                 loss.backward()
-
-                # to avoid nan loss
-                # torch.nn.utils.clip_grad_norm_(self.model.parameters(), 0.5)
-
                 optimizer.step()
-                if batch_idx % 10 == 0:
-                    logger.info('Update Epoch: {} \tLoss: {:.6f}'.format(
-                        epoch,  loss.item()))
+                
                 batch_loss.append(loss.item())
-            epoch_loss.append(sum(batch_loss) / len(batch_loss))
-            logger.info('Epoch: {}\tLoss: {:.6f}'.format(
-                epoch, sum(epoch_loss) / len(epoch_loss)))
+                
+                _, predicted = torch.max(pred.data, 1)
+                total += labels.size(0)
+                correct += (predicted == labels).sum().item()
+            
+            scheduler.step()
+
+            epoch_loss.append(sum(batch_loss) / len(batch_loss) if batch_loss else 0)
+            
+            accuracy = correct / total
+
+            # print('Epoch: {}\tLoss: {:.6f}\tAccuracy:{:.6f}'.format(epoch, sum(epoch_loss) / len(epoch_loss), accuracy))
+            if self.logger is not None:
+                self.logger.info('Epoch: {}\tLoss: {:.6f}\tAccuracy:{:.6f}%'.format(
+                    epoch, sum(epoch_loss) / len(epoch_loss), accuracy))
+        
+        
 
     def aggregate(self, **kwargs):        
             """fedavg aggregation
@@ -79,7 +92,6 @@ class Trainer(BaseTrainer):
             return global_model_param
 
     def test(self, model, test_data, device):
-        
 
         model.to(device)
         model.eval()
@@ -90,6 +102,7 @@ class Trainer(BaseTrainer):
             "test_precision": 0,
             "test_recall": 0,
             "test_total": 0,
+            "test_accuracy":0,
         }
 
         """
@@ -106,34 +119,23 @@ class Trainer(BaseTrainer):
 
         with torch.no_grad():
             for batch_idx, (x, target) in enumerate(test_data):
+                
                 x = x.to(device)
                 target = target.to(device)
                 pred = model(x)
                 loss = criterion(pred, target)
 
-                # if args.dataset == "stackoverflow_lr":
-                #     predicted = (pred > 0.5).int()
-                #     correct = predicted.eq(target).sum(axis=-1).eq(target.size(1)).sum()
-                #     true_positive = ((target * predicted) > 0.1).int().sum(axis=-1)
-                #     precision = true_positive / (predicted.sum(axis=-1) + 1e-13)
-                #     recall = true_positive / (target.sum(axis=-1) + 1e-13)
-                #     metrics["test_precision"] += precision.sum().item()
-                #     metrics["test_recall"] += recall.sum().item()
-                # else:
-                #     _, predicted = torch.max(pred, 1)
-                #     correct = predicted.eq(target).sum()
                 _, predicted = torch.max(pred, 1)
                 correct = predicted.eq(target).sum()
                 metrics["test_correct"] += correct.item()
+                
                 metrics["test_loss"] += loss.item() * target.size(0)
                 if len(target.size()) == 1:  #
                     metrics["test_total"] += target.size(0)
                 elif len(target.size()) == 2:  # for tasks of next word prediction
                     metrics["test_total"] += target.size(0) * target.size(1)
+        metrics["test_accuracy"] = metrics["test_correct"] / len(test_data.dataset)
         return metrics
 
-    def test_on_the_server(
-        self, train_data_local_dict, test_data_local_dict, device, args=None
-    ) -> bool:
 
-        return False
+        

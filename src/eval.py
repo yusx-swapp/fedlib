@@ -18,6 +18,7 @@ from fedlib.networks import VAE
 
 from torch import nn
 
+
 class NISTAutoencoder(nn.Module):
     def __init__(self):
         super(NISTAutoencoder, self).__init__()

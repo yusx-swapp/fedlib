@@ -1,6 +1,6 @@
 from fedlib.utils import Arguments
 
-from fedlib.lib.algo import feddp
+from fedlib.lib.algo import fedavg
 
 from fedlib.ve import simulator
 
@@ -15,7 +15,7 @@ def main():
     
     model = fedlib.init_model(args.model)
     
-    trainer = feddp(fedlib.get_logger())
+    trainer = fedavg(fedlib.get_logger())
 
     server = fedlib.init_server(n_clients = args.server.n_clients,global_model=model,testloader=global_test_dl,
                                 trainer=trainer, communicator=None, sampler=args.server.sampler, device=args.server.device)

@@ -11,8 +11,8 @@ class Trainer(BaseTrainer):
         super().__init__()
         self.logger = logger
 
-    # 
-    def train(self, model:nn.Module, dataloader , criterion, optimizer, scheduler, epochs:int, pruning_threshold:float, device):
+    # pruning_threshold
+    def train(self, model:nn.Module, dataloader , criterion, optimizer, scheduler, local_epochs:int, pruning_threshold:float, device):
         """training an autoencoder 
 
         Args:
@@ -30,7 +30,7 @@ class Trainer(BaseTrainer):
         model.train()
         epoch_loss = []
 
-        for epoch in range(epochs):
+        for epoch in range(local_epochs):
             correct = 0
             total = 0
             batch_loss = []

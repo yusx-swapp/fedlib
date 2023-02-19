@@ -12,7 +12,10 @@ class Server:
         self._trainer = kwargs["trainer"]
         self._communicator = kwargs["communicator"]
 
+        #TODO: change to testloader
         self._test_dataset = kwargs["test_dataset"]
+        
+        #TODO: add attribute client participation rate
         
 
         '''initialize key pair'''

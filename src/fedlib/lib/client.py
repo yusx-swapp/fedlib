@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from http import client
 import torch
 
 class Client:

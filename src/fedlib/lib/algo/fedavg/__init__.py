@@ -1,1 +1,1 @@
-from .trainer import Trainer
+from .fedavg import Trainer
