@@ -1,6 +1,6 @@
-# Heterogeneous Federated Learning using Dynamic Model Pruning and Adaptive Gradient
+# FedLib: Implementation for FedAvg
 
-This is the implementation for the paper: **Heterogeneous Federated Learning using Dynamic Model Pruning and Adaptive Gradient**
+This is the implementation for the paper: **Communication-Efficient Learning of Deep Networks from Decentralized Data**
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.7633920.svg)](https://doi.org/10.5281/zenodo.7633920)
 
@@ -82,6 +82,19 @@ If you are using our work please cite:
   year = {2021},
   copyright = {arXiv.org perpetual, non-exclusive license}
 }
+@InProceedings {yu2021spatl,
+title = {SPATL: Salient Parameter Aggregation and Transfer Learning for Heterogeneous Federated Learning},
+author = {S. Yu and P. Nguyen and W. Abebe and W. Qian and A. Anwar and A. Jannesari},
+booktitle = {2022 SC22: International Conference for High Performance Computing, Networking, Storage and Analysis (SC) (SC)},
+year = {2022},
+issn = {2167-4337},
+pages = {495-508},
+keywords = {federated learning;heterogeneous system;machine learning;ml;fl},
+publisher = {IEEE Computer Society},
+address = {Los Alamitos, CA, USA},
+month = {nov}
+}
+
 ```
 
 ## License
