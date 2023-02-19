@@ -1,3 +1,4 @@
 scikit-learn
 pyyaml
 ipykernel
+tensorboard
