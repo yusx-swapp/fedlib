@@ -28,7 +28,7 @@ class Server:
 
     
     def _init_writer(self,log_dir):
-        self.writer = SummaryWriter(log_dir=os.path.join(log_dir, 'Server Global Model'))
+        self.writer = SummaryWriter(log_dir)
     
 
     def _init_sampler(self,sampler_name:str) -> None:
