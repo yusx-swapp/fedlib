@@ -3,8 +3,7 @@ from ..lib.server import Server
 from ..lib.client import Client
 from ..utils import get_logger
 from .base import base
-from torch.utils.tensorboard import SummaryWriter
-writer = SummaryWriter(log_dir='logs/global')
+
 __all__ = ['simulator']
 class simulator(base):
     """Federated Learning Sequential Simulator.
@@ -54,12 +53,13 @@ class simulator(base):
 
                 metrics = client.eval()
                 self.logger.info(f'*******Client {str(id+1)} Training Finished! Test Accuracy: {str(metrics["test_accuracy"])} ******')
+                client.writer.add_scalar('Test Accuracy', metrics["test_accuracy"])
 
 
             self.server.server_update(nets_params=nets_params, local_datasize=local_datasize,global_model_param= global_model_param)
             metrics = self.server.eval()
             self.logger.info('*******Model Test Accuracy After Server Aggregation: %s *******' % str(metrics["test_accuracy"]))
-            writer.add_scalar('Global Test Accuracy', metrics["test_accuracy"], round+1)
+            self.server.writer.add_scalar('Global Test Accuracy', metrics["test_accuracy"], round+1)
             self.logger.info('*******Rounds %s Federated Learning Finished!******' % str(round+1))
 
 

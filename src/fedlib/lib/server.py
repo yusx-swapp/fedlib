@@ -1,6 +1,7 @@
 from abc import abstractmethod
 from fedlib.lib.sampler import *
-
+from torch.utils.tensorboard import SummaryWriter
+import os
 class Server:
     def __init__(self,**kwargs) -> None:
         self._n_clients = kwargs["n_clients"]
@@ -11,15 +12,23 @@ class Server:
         
         self._trainer = kwargs["trainer"]
         self._communicator = kwargs["communicator"]
-
+        
+        
         #TODO: change to testloader
         self._test_dataset = kwargs["test_dataset"]
         
         #TODO: add attribute client participation rate
         
+        if kwargs['log_dir']:
+            self._init_writer()
 
         '''initialize key pair'''
         self._key_generator()
+
+
+    
+    def _init_writer(self,log_dir):
+        self.writer = SummaryWriter(log_dir=os.path.join(log_dir, 'Server Global Model'))
     
 
     def _init_sampler(self,sampler_name:str) -> None:

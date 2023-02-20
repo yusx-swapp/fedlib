@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 import torch
-
+import os
+from torch.utils.tensorboard import SummaryWriter
 class Client:
     def __init__(self, **kwargs) -> None:
         
@@ -25,9 +26,12 @@ class Client:
         self._init_criterion(kwargs["criterion"])
         self._init_optimizer(kwargs["optimizer"])
         self._init_lr_schedular(kwargs["lr_scheduler"])
+        if kwargs['log_dir']:
+            self._init_writer()
 
-        # self._global_testloader = kwargs["test_dl_global"]
-        
+    
+    def _init_writer(self,log_dir):
+        self.writer = SummaryWriter(log_dir=os.path.join(log_dir, 'Client:'+str(self.id)))
 
     def _init_optimizer(self,optimizer_name:str) -> None:
         """_summary_
