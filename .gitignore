@@ -17,3 +17,4 @@ demo/data/*
 *.err
 .DS_Store
 data/
+*logs/
