@@ -31,7 +31,7 @@ class Client:
 
     
     def _init_writer(self,log_dir):
-        self.writer = SummaryWriter(log_dir=os.path.join(log_dir, 'Client:'+str(self.id)))
+        self.writer = SummaryWriter(log_dir=os.path.join(log_dir, 'Client:'+str(self.id+1)))
 
     def _init_optimizer(self,optimizer_name:str) -> None:
         """_summary_

@@ -53,7 +53,7 @@ class simulator(base):
 
                 metrics = client.eval()
                 self.logger.info(f'*******Client {str(id+1)} Training Finished! Test Accuracy: {str(metrics["test_accuracy"])} ******')
-                client.writer.add_scalar('Test Accuracy', metrics["test_accuracy"])
+                client.writer.add_scalar(f'Client {str(id+1)}'+'Test Accuracy', metrics["test_accuracy"],round+1)
 
 
             self.server.server_update(nets_params=nets_params, local_datasize=local_datasize,global_model_param= global_model_param)
