@@ -13,7 +13,7 @@ __all__=['init_model','init_server','init_clients','init_dataset']
 def init_model(model_args):
     
     if model_args.model == 'resnet20':
-        return resnet20()
+        return resnet20(n_classes=model_args.n_classes)
     else:
         raise NotImplementedError
 
