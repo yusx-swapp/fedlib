@@ -17,16 +17,16 @@ def init_model(model_args):
     else:
         raise NotImplementedError
 
-def init_server(n_clients,global_model,testloader,trainer,sampler,communicator=None,device=None):
+def init_server(n_clients,global_model,testloader,trainer,sampler,communicator=None,device=None,log_dir=None):
 
     server = Server(n_clients = n_clients, global_model= global_model,
                     device = device, sampler = sampler,
-                    trainer = trainer,communicator = communicator,test_dataset=testloader)
+                    trainer = trainer,communicator = communicator,test_dataset=testloader, log_dir=log_dir)
     
     return server
 
 
-def init_clients(n_clients,model,data_loaders,testloader,trainer, lr,lr_scheduler,criterion,optimizer,communicator=None,device=None):
+def init_clients(n_clients,model,data_loaders,testloader,trainer, lr,lr_scheduler,criterion,optimizer,communicator=None,device=None,log_dir=None):
 
     clients = {}
     print("trainer:", trainer)
@@ -37,7 +37,7 @@ def init_clients(n_clients,model,data_loaders,testloader,trainer, lr,lr_schedule
                             testloader=testloader,lr=lr,trainer=trainer,
                             device=device,communicator = communicator,
                             criterion=criterion,optimizer=optimizer,
-                            lr_scheduler = lr_scheduler)
+                            lr_scheduler = lr_scheduler,log_dir=log_dir)
     return clients
 
 def init_dataset(**data_args):

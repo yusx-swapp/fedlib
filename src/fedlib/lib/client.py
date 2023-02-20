@@ -27,7 +27,7 @@ class Client:
         self._init_optimizer(kwargs["optimizer"])
         self._init_lr_schedular(kwargs["lr_scheduler"])
         if kwargs['log_dir']:
-            self._init_writer()
+            self._init_writer(kwargs['log_dir'])
 
     
     def _init_writer(self,log_dir):

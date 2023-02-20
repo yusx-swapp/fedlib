@@ -20,7 +20,7 @@ class Server:
         #TODO: add attribute client participation rate
         
         if kwargs['log_dir']:
-            self._init_writer()
+            self._init_writer(kwargs['log_dir'])
 
         '''initialize key pair'''
         self._key_generator()
