@@ -18,12 +18,13 @@ def main():
     trainer = feddp(fedlib.get_logger())
 
     server = fedlib.init_server(n_clients = args.server.n_clients,global_model=model,testloader=global_test_dl,
-                                trainer=trainer, communicator=None, sampler=args.server.sampler, device=args.server.device)
+                                trainer=trainer, communicator=None, sampler=args.server.sampler, device=args.server.device,
+                                log_dir=args.server.log_dir)
 
     clients = fedlib.init_clients(n_clients=args.client.n_clients,model=model,data_loaders=data_loaders,
                             testloader=global_test_dl,lr=args.client.lr,lr_scheduler=args.client.lr_scheduler,
                             criterion=args.client.criterion,optimizer=args.client.optimizer,trainer=trainer, 
-                            communicator=None,device=args.client.device)
+                            communicator=None,device=args.client.device,log_dir=args.client.log_dir)
     # print(len(clients))
     runner = simulator(server=server, clients=clients, 
                         communication_rounds=args.general.communication_rounds,
