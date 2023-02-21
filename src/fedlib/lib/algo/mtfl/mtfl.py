@@ -132,6 +132,7 @@ class Trainer(BaseTrainer):
             "test_recall": 0,
             "test_total": 0,
             "test_accuracy":0,
+            "decoder_loss":0
         }
 
         """
@@ -145,30 +146,24 @@ class Trainer(BaseTrainer):
         # else:
             # criterion = nn.CrossEntropyLoss().to(device)
         criterion = nn.CrossEntropyLoss().to(device)
+        decoder_criterion = torch.nn.MSELoss().to(device)
 
         with torch.no_grad():
             for batch_idx, (x, target) in enumerate(test_data):
                 
                 x = x.to(device)
                 target = target.to(device)
-                pred, _ = model(x)
+                pred, x_ = model(x)
+                
                 loss = criterion(pred, target)
-
-                # if args.dataset == "stackoverflow_lr":
-                #     predicted = (pred > 0.5).int()
-                #     correct = predicted.eq(target).sum(axis=-1).eq(target.size(1)).sum()
-                #     true_positive = ((target * predicted) > 0.1).int().sum(axis=-1)
-                #     precision = true_positive / (predicted.sum(axis=-1) + 1e-13)
-                #     recall = true_positive / (target.sum(axis=-1) + 1e-13)
-                #     metrics["test_precision"] += precision.sum().item()
-                #     metrics["test_recall"] += recall.sum().item()
-                # else:
-                #     _, predicted = torch.max(pred, 1)
-                #     correct = predicted.eq(target).sum()
+                loss_decoder = decoder_criterion(x_,x)
+                
                 _, predicted = torch.max(pred, 1)
                 correct = predicted.eq(target).sum()
                 metrics["test_correct"] += correct.item()
                 
+                metrics['decoder_loss'] +=loss_decoder
+
                 metrics["test_loss"] += loss.item() * target.size(0)
                 if len(target.size()) == 1:  #
                     metrics["test_total"] += target.size(0)
