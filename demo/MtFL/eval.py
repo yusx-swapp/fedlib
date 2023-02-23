@@ -14,7 +14,7 @@ def main():
     
     data_loaders, global_test_dl, _ = fedlib.init_dataset(**vars(args.dataset))
     
-    model = VAE(1000,10)
+    model = VAE(1000,args.model.n_classes)
     
     trainer = mtfl(fedlib.get_logger())
 

@@ -27,7 +27,8 @@ class Trainer(BaseTrainer):
         
         model.to(device)
         model.train()
-        criterion_pred, criterion_rep = criterion["criterion_pred"], criterion["criterion_rep"]
+        criterion_pred = nn.CrossEntropyLoss()
+        criterion_rep = nn.MSELoss()
         epoch_loss = []
         for epoch in range(local_epochs):
             batch_loss = []
@@ -73,7 +74,7 @@ class Trainer(BaseTrainer):
         
 
 
-    def aggregate(self, nets_encoders,local_datasize, globa_encoder ):        
+    def aggregate(self, nets_params,local_datasize, global_model_param ):        
             """fedavg aggregation
             kwargs:
                 nets_encoders: 
@@ -91,15 +92,15 @@ class Trainer(BaseTrainer):
             fed_avg_freqs = [size/ total_data_points for size in local_datasize]
             
             
-            for idx, net_para in enumerate(nets_encoders):
+            for idx, net_para in enumerate(nets_params):
                 if idx == 0:
                     for key in net_para:
-                        globa_encoder[key] = net_para[key] * fed_avg_freqs[idx]
+                        global_model_param[key] = net_para[key] * fed_avg_freqs[idx]
                 else:
                     for key in net_para:
-                        globa_encoder[key] += net_para[key] * fed_avg_freqs[idx]
+                        global_model_param[key] += net_para[key] * fed_avg_freqs[idx]
 
-            return globa_encoder
+            return global_model_param
     
     def test_decoder(self, model, test_data, device):
 
