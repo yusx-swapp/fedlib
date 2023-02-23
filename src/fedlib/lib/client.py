@@ -87,7 +87,7 @@ class Client:
         kwargs["criterion"] = self.criterion
 
         self._trainer.train(**kwargs)
-    
+        
     @abstractmethod
     def client_run(self, **kwargs):
         pass

@@ -11,7 +11,7 @@ class Trainer(BaseTrainer):
         self.logger = logger
 
     # 
-    def train(self, model:nn.Module, dataloader , criterion, optimizer, scheduler, epochs:int, device):
+    def train(self, model:nn.Module, dataloader , criterion, optimizer, scheduler, local_epochs:int, device):
         """training an autoencoder 
 
         Args:
@@ -29,7 +29,7 @@ class Trainer(BaseTrainer):
         model.train()
         criterion_pred, criterion_rep = criterion["criterion_pred"], criterion["criterion_rep"]
         epoch_loss = []
-        for epoch in range(epochs):
+        for epoch in range(local_epochs):
             batch_loss = []
             for batch_idx, (x, labels) in enumerate(dataloader):
                 x, labels = x.to(device), labels.to(device)
