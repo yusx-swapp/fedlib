@@ -30,6 +30,7 @@ class Trainer(BaseTrainer):
         criterion_pred = nn.CrossEntropyLoss()
         criterion_rep = nn.MSELoss()
         epoch_loss = []
+
         for epoch in range(local_epochs):
             batch_loss = []
             for batch_idx, (x, labels) in enumerate(dataloader):
@@ -37,23 +38,40 @@ class Trainer(BaseTrainer):
                 
                 model.zero_grad()
                 
-                #TODO @Sixing Integrate the decoder to the model? Waq, I'll provide an API for this, you may run experiments and tested it.
-                #representation, _ = model.encoder(x)
-                #Swap upper line for lower line when using MNIST encoder which returns just a single value
-                #representation = model.encoder(x)
-                
+        
                 pred_out, decodes_out = model(x)
-                #pred_out = model.predictor(representation.view(x.size(0), -1))
-                #decodes_out = model.decoder(x)
 
-                loss1 = criterion_pred(pred_out, labels)
-                loss2 = criterion_rep(decodes_out, x)
-                loss = loss1 + loss2
+                loss = criterion_rep(decodes_out, x)
 
                 loss.backward()
 
-                # to avoid nan loss
-                # torch.nn.utils.clip_grad_norm_(self.model.parameters(), 0.5)
+                optimizer.step()
+                batch_loss.append(loss.item())
+            
+            scheduler.step()
+
+            epoch_loss.append(sum(batch_loss) / len(batch_loss) if batch_loss else 0)
+
+        if self.logger is not None:
+            logger.info('Encoder Epoch: {}\tLoss: {:.6f}'.format(
+                    epoch, sum(epoch_loss) / len(epoch_loss)))
+            
+            scheduler.step()
+        
+        for param in model.encoder.parameters():
+            param.requires_grad = False
+        for epoch in range(local_epochs):
+            batch_loss = []
+            for batch_idx, (x, labels) in enumerate(dataloader):
+                x, labels = x.to(device), labels.to(device)
+                
+                model.zero_grad()
+                
+                pred_out, decodes_out = model(x)
+
+                loss = criterion_pred(pred_out, labels)
+
+                loss.backward()
 
                 optimizer.step()
                 batch_loss.append(loss.item())
@@ -62,10 +80,18 @@ class Trainer(BaseTrainer):
 
             epoch_loss.append(sum(batch_loss) / len(batch_loss) if batch_loss else 0)
             
+
+
             if self.logger is not None:
-                logger.info('Epoch: {}\tLoss: {:.6f}'.format(
+                logger.info('Predictor Epoch: {}\tLoss: {:.6f}'.format(
                     epoch, sum(epoch_loss) / len(epoch_loss)))
-            scheduler.step()
+            # scheduler.step()
+
+        for param in model.encoder.parameters():
+            param.requires_grad = True
+
+
+
             #TODO @Sixing: Need add an argument `save_dir` to save the decoder img
             # if epoch % 10 == 0:
             #     pic = self._to_img(output.cpu().data)
