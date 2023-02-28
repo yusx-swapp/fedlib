@@ -100,6 +100,38 @@ class Cifar100Autoencoder(nn.Module):
         x_ = self.decoder(x)
         return pred, x_
 
+
+def customize_client_model(model,y_train,net_dataidx_map,id):
+    """Customize client models so that the predictor layer will have
+    as many neurons as the number of distinct labels assigned to the
+    node in net_dataindex_map. Note that the output layer size will fluctuate 
+    due to the non-iid data partition. Return a label map with key: new_label,
+    value: true_label.
+
+    Args:
+        model (torch.nn): The client model.
+        y_train (np.array): All client labels.
+        net_dataidx_map (dict): Data partition dictionary.
+        id (int): Client id.
+
+    Returns:
+        _type_: _description_
+    """
+    idxs = net_dataidx_map[id]
+    new_labels = np.unique(np.array(y_train)[idxs])
+    out_features = len(new_labels)
+    label_map = {j:i for i,j in enumerate(new_labels)}
+    
+    in_features = model.predictor.in_features
+    model.predictor = nn.Linear(in_features=in_features, out_features=out_features, bias=True)
+
+    # print("Client",id)
+    # print("\t",label_map)
+    # print("\t",model.predictor)
+
+    return label_map
+
+
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', type=str, default='res18AE', help='neural network used in training')
@@ -207,7 +239,8 @@ if __name__ == '__main__':
         args["trainloader"] = data_loaders[id]
         args["testloader"] = test_loaders[id]
         args["model"] = copy.deepcopy(model)
-        print("Client:",id)
+        label_map = customize_client_model(args["model"],y_train,net_dataidx_map,id)
+        args["label_map"] = label_map
         clients[id] = Client(**args)
 
     simulator = MTFLEnv(server=server, clients=clients, communication_rounds=args["comm_round"],n_clients= args["n_clients"],sample_rate=args["sample"])

@@ -11,7 +11,7 @@ class Trainer(BaseTrainer):
         self.logger = logger
 
 
-    def train(self, model:nn.Module, dataloader , criterion, optimizer, scheduler, epochs:int, device):
+    def train(self, model:nn.Module, dataloader , criterion, optimizer, scheduler, epochs:int, device, label_map):
         """training an autoencoder 
 
         Args:
@@ -45,7 +45,7 @@ class Trainer(BaseTrainer):
                 #pred_out = model.predictor(representation.view(x.size(0), -1))
                 #decodes_out = model.decoder(x)
 
-                loss1 = criterion_pred(pred_out, labels)
+                loss1 = criterion_pred(pred_out, torch.tensor([label_map[int(l)] for l in labels]))
                 loss2 = criterion_rep(decodes_out, x)
                 loss = loss1 + loss2
 
@@ -120,7 +120,7 @@ class Trainer(BaseTrainer):
 
         return total_loss
 
-    def test(self, model, test_data, device):
+    def test(self, model, test_data, device, label_map):
 
         model.to(device)
         model.eval()
@@ -152,7 +152,7 @@ class Trainer(BaseTrainer):
                 x = x.to(device)
                 target = target.to(device)
                 pred, _ = model(x)
-                loss = criterion(pred, target)
+                loss = criterion(pred, torch.tensor([label_map[int(t)] for t in target]))
 
                 # if args.dataset == "stackoverflow_lr":
                 #     predicted = (pred > 0.5).int()

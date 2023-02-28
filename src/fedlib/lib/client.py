@@ -28,6 +28,7 @@ class Client:
 
         self._global_testloader = kwargs["test_dl_global"]
         self._testloader = kwargs["testloader"]
+        self._label_map = kwargs["label_map"]
 
         print("Client:",self.id,"\tTrain:",len(self._trainloader.dataset),"\tTest:",len(self._testloader.dataset))
         
@@ -68,6 +69,7 @@ class Client:
         kwargs["optimizer"] = self.optimizer
         kwargs["scheduler"] = self.scheduler
         kwargs["criterion"] = self.criterion
+        kwargs["label_map"] = self._label_map
 
         self._trainer.train(**kwargs)
     
@@ -119,7 +121,7 @@ class Client:
         self._dataset = dataset
 
     def eval(self):
-        return self._trainer.test(self._model, self._testloader, self._device)
+        return self._trainer.test(self._model, self._testloader, self._device, self._label_map)
     
     def eval_decoder(self):
         return self._trainer.test_decoder(self._model, self._global_testloader, self._device)
