@@ -526,8 +526,8 @@ def get_client_dataloader(dataset, datadir, train_bs, test_bs, dataidxs=None, no
         total_train += len(train_ds)
         total_test += len(test_ds)
         if local_test_loader:
-            train_dl = data.DataLoader(dataset=torch.utils.data.Subset(train_ds, dataid[:0.8*len(dataid)]), batch_size=train_bs, shuffle=True, drop_last=True)     
-            local_test_dl = data.DataLoader(dataset=torch.utils.data.Subset(train_ds, dataid[0.8*len(dataid):]), batch_size=train_bs, shuffle=True, drop_last=True)    
+            train_dl = data.DataLoader(dataset=torch.utils.data.Subset(train_ds, dataid[:int(0.8*len(dataid))]), batch_size=train_bs, shuffle=True, drop_last=True)     
+            local_test_dl = data.DataLoader(dataset=torch.utils.data.Subset(train_ds, dataid[int(0.8*len(dataid)):]), batch_size=train_bs, shuffle=True, drop_last=True)    
             local_test_loaders.append(local_test_dl)
             logger.info(f"Client ID:{key+1},\tLocal Train Data Size:{len(train_ds)},\tLocal Test Data Size:{len(test_ds)}")
 
