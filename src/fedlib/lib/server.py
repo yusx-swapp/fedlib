@@ -35,6 +35,7 @@ class Server:
 
     def server_update(self, **kwargs):
         self._aggregate(**kwargs)
+            
     
     @abstractmethod
     def server_run(self, test_gap=1):

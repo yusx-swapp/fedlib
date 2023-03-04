@@ -27,6 +27,7 @@ class Client:
         self._init_lr_schedular(kwargs["lr_scheduler"])
 
         self._global_testloader = kwargs["test_dl_global"]
+        self._cluster_testloader = kwargs["cluster_testloader"]
         self._testloader = kwargs["testloader"]
         self._label_map = kwargs["label_map"]
 

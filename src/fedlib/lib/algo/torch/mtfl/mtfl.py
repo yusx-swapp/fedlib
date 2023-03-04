@@ -29,6 +29,31 @@ class Trainer(BaseTrainer):
         model.train()
         criterion_pred, criterion_rep = criterion["criterion_pred"], criterion["criterion_rep"]
         epoch_loss = []
+
+        #First train the decoder
+        for epoch in range(epochs):
+            batch_loss = []
+            for batch_idx, (x, labels) in enumerate(dataloader):
+                x = x.to(device)
+                model.zero_grad()
+
+                decodes_out = model.decoder_forward(x)
+                loss = criterion_rep(decodes_out, x)
+
+                loss.backward()
+
+                optimizer.step()
+            
+            scheduler.step()
+
+        #Freeze the encoder when training the predictor
+        for param in model.encoder.parameters():
+            param.requires_grad = False
+        
+        optimizer = torch.optim.SGD(model.predictor.parameters(), 0.1)
+        scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.99)
+        
+        #Next, train the predictor by freezing the encoder params
         for epoch in range(epochs):
             batch_loss = []
             for batch_idx, (x, labels) in enumerate(dataloader):
@@ -41,13 +66,14 @@ class Trainer(BaseTrainer):
                 #Swap upper line for lower line when using MNIST encoder which returns just a single value
                 #representation = model.encoder(x)
                 
-                pred_out, decodes_out = model(x)
+                pred_out = model.predictor_forward(x)
+
                 #pred_out = model.predictor(representation.view(x.size(0), -1))
                 #decodes_out = model.decoder(x)
 
-                loss1 = criterion_pred(pred_out, torch.tensor([label_map[int(l)] for l in labels]))
-                loss2 = criterion_rep(decodes_out, x)
-                loss = loss1 + loss2
+                loss = criterion_pred(pred_out, torch.tensor([label_map[int(l)] for l in labels]))
+                #loss2 = criterion_rep(decodes_out, x)
+                #loss = loss1 + loss2
 
                 loss.backward()
 
@@ -71,6 +97,9 @@ class Trainer(BaseTrainer):
             #     from torchvision.utils import save_image
             #     save_image(pic, './dc_img/image_{}.png'.format(epoch))
         
+        #Unfreeze the encoder when training the predictor
+        for param in model.encoder.parameters():
+            param.requires_grad = True
 
 
     def aggregate(self, nets_encoders,local_datasize, globa_encoder ):        

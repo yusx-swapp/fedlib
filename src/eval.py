@@ -17,36 +17,106 @@ from fedlib.datasets import partition_data, get_dataloader,get_client_dataloader
 from fedlib.networks import VAE
 
 from torch import nn
+from torch.utils.data import Subset
+
+import torch
+import torch.nn as nn
 
 class NISTAutoencoder(nn.Module):
-    def __init__(self):
+    def __init__(self, embedding_dim=128):
         super(NISTAutoencoder, self).__init__()
+        
+        # Encoder layers
         self.encoder = nn.Sequential(
-            nn.Conv2d(1, 16, 3, stride=3, padding=1),  # b, 16, 10, 10
-            nn.ReLU(True),
-            nn.MaxPool2d(2, stride=2),  # b, 16, 5, 5
-            nn.Conv2d(16, 8, 3, stride=2, padding=1),  # b, 8, 3, 3
-            nn.ReLU(True),
-            nn.MaxPool2d(2, stride=1)  # b, 8, 2, 2
+            nn.Conv2d(1, 16, kernel_size=3, stride=2, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(16, 32, kernel_size=3, stride=2, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1),
+            nn.ReLU(),
+            nn.Flatten(),
+            nn.Linear(64*4*4, embedding_dim),
         )
-        self.predictor = nn.Linear(in_features=32, out_features=10, bias=True)
+        #Predictor
+        self.predictor = nn.Linear(in_features=embedding_dim, out_features=10, bias=True)
+        # Decoder layers
         self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(8, 16, 3, stride=2),  # b, 16, 5, 5
-            nn.ReLU(True),
-            nn.ConvTranspose2d(16, 8, 5, stride=3, padding=1),  # b, 8, 15, 15
-            nn.ReLU(True),
-            nn.ConvTranspose2d(8, 1, 2, stride=2, padding=1),  # b, 1, 28, 28
-            nn.Tanh()
+            nn.Linear(embedding_dim, 64*4*4),
+            nn.ReLU(),
+            nn.Unflatten(1, (64, 4, 4)),
+            nn.ConvTranspose2d(64, 32, kernel_size=3, stride=2, padding=1), # Transpose convolutional layer 1,
+            nn.ReLU(),
+            nn.ConvTranspose2d(32, 16, kernel_size=4, stride=2, padding=1),
+            nn.ReLU(),
+            nn.ConvTranspose2d(16, 1, kernel_size=4, stride=2, padding=1),
+            nn.Tanh(),
         )
+    
+    def decoder_forward(self,x):
+        z = self.encoder(x)
+        x_ = self.decoder(z)
+        
+        return x_
+    
+    def predictor_forward(self,x):
+        z = self.encoder(x)
+        z = z.view(z.size(0), -1)
+        pred = self.predictor(z)
+        
+        return pred
 
 
     def forward(self, x):
         z = self.encoder(x)
         x_ = self.decoder(z)
-        z = z.view(z.size(0), -1)
+        #z = z.view(z.size(0), -1)
         pred = self.predictor(z)
         
         return pred, x_
+
+
+# class NISTAutoencoder(nn.Module):
+#     def __init__(self):
+#         super(NISTAutoencoder, self).__init__()
+#         self.encoder = nn.Sequential(
+#             nn.Conv2d(1, 16, 3, stride=3, padding=1),  # b, 16, 10, 10
+#             nn.ReLU(True),
+#             nn.MaxPool2d(2, stride=2),  # b, 16, 5, 5
+#             nn.Conv2d(16, 8, 3, stride=2, padding=1),  # b, 8, 3, 3
+#             nn.ReLU(True),
+#             nn.MaxPool2d(2, stride=1)  # b, 8, 2, 2
+#         )
+#         self.predictor = nn.Linear(in_features=32, out_features=10, bias=True)
+#         self.decoder = nn.Sequential(
+#             nn.ConvTranspose2d(8, 16, 3, stride=2),  # b, 16, 5, 5
+#             nn.ReLU(True),
+#             nn.ConvTranspose2d(16, 8, 5, stride=3, padding=1),  # b, 8, 15, 15
+#             nn.ReLU(True),
+#             nn.ConvTranspose2d(8, 1, 2, stride=2, padding=1),  # b, 1, 28, 28
+#             nn.Tanh()
+#         )
+    
+#     def decoder_forward(self,x):
+#         z = self.encoder(x)
+#         x_ = self.decoder(z)
+        
+#         return x_
+    
+#     def predictor_forward(self,x):
+#         z = self.encoder(x)
+#         z = z.view(z.size(0), -1)
+#         pred = self.predictor(z)
+        
+#         return pred
+
+
+#     def forward(self, x):
+#         z = self.encoder(x)
+#         x_ = self.decoder(z)
+#         z = z.view(z.size(0), -1)
+#         pred = self.predictor(z)
+        
+#         return pred, x_
 
 class Cifar10Autoencoder(nn.Module):
     def __init__(self):
@@ -100,13 +170,42 @@ class Cifar100Autoencoder(nn.Module):
         x_ = self.decoder(x)
         return pred, x_
 
+def cluster(net_dataidx_map,y_train,n_clients):
+    """Construct task clusters based on the nodes data partition.
+    Each cluster will contain nodes that own the same set of data labels.
+    Each node's task is to classify only the labels it possesses.
+    This way, nodes in a cluster will have the same downstream task.
+
+    Args:
+        net_dataidx_map (dict): Data partition dictionary.
+        y_train (np.array): All client labels.
+        n_clients (int): Number of clients.
+
+    Returns:
+        tuple: Task:Nodes dictionary, Node:Task dictionary
+    """
+    task_nodes, node_task = {},{}
+    for id in range(n_clients):
+        idxs = net_dataidx_map[id]
+        labels = np.unique(np.array(y_train)[idxs])
+        node_task[id] = tuple(labels)
+        if tuple(labels) in task_nodes.keys():
+            task_nodes[tuple(labels)].append(id)
+        else:
+            task_nodes[tuple(labels)] = [id]
+
+    # for task,nodes in task_nodes.items():
+    #     print("\t",task, ":", nodes)
+    
+    return task_nodes, node_task
+
 
 def customize_client_model(model,y_train,net_dataidx_map,id):
     """Customize client models so that the predictor layer will have
     as many neurons as the number of distinct labels assigned to the
     node in net_dataindex_map. Note that the output layer size will fluctuate 
-    due to the non-iid data partition. Return a label map with key: new_label,
-    value: true_label.
+    due to the non-iid data partition. Return a label map with key: real_label,
+    value: new_label.
 
     Args:
         model (torch.nn): The client model.
@@ -115,7 +214,7 @@ def customize_client_model(model,y_train,net_dataidx_map,id):
         id (int): Client id.
 
     Returns:
-        _type_: _description_
+        dict: Mapping of real_label to new_label.
     """
     idxs = net_dataidx_map[id]
     new_labels = np.unique(np.array(y_train)[idxs])
@@ -217,6 +316,7 @@ if __name__ == '__main__':
         x = torch.rand([10,3,32,32])     
     pred, x_ = model(x)
     print(x.shape,x_.shape,pred.shape)
+    assert x_.shape == x.shape
 
     args["global_model"] = model.encoder
     server = Server(**args)
@@ -231,6 +331,9 @@ if __name__ == '__main__':
         "criterion_rep": criterion_rep,
         "criterion_pred": criterion_pred
         }
+    
+    print("Clusters:")
+    task_nodes, node_task = cluster(net_dataidx_map,y_train,args["n_clients"])
 
     for id in range(args["n_clients"]):
         # dataidxs = net_dataidx_map[id]
@@ -241,9 +344,22 @@ if __name__ == '__main__':
         args["model"] = copy.deepcopy(model)
         label_map = customize_client_model(args["model"],y_train,net_dataidx_map,id)
         args["label_map"] = label_map
-        clients[id] = Client(**args)
 
-    simulator = MTFLEnv(server=server, clients=clients, communication_rounds=args["comm_round"],n_clients= args["n_clients"],sample_rate=args["sample"])
+        #Filter data points from global test dataloader to create a cluster test dataloader
+        #Only targets in client's label_map will be included in it's cluster testset
+        indices = [idx for idx, target in enumerate(test_dl_global.dataset.target) if target in list(label_map.keys())]
+        cluster_dataloader = torch.utils.data.DataLoader(Subset(test_dl_global.dataset, indices),batch_size=32,drop_last=True)
+
+        args["cluster_testloader"] = cluster_dataloader
+        print("Node",id,"cluster:",len(cluster_dataloader.dataset))
+
+        clients[id] = Client(**args)
+    
+    for task, nodes in task_nodes.items():
+        logger.info('Task %s  :  %s' % (str(task),str(nodes)))
+
+
+    simulator = MTFLEnv(server=server, clients=clients, communication_rounds=args["comm_round"],n_clients= args["n_clients"],sample_rate=args["sample"],task_nodes=task_nodes, node_task=node_task)
 
     simulator.run(local_epochs=args["epochs"])
 
