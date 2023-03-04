@@ -156,6 +156,19 @@ class VAE(nn.Module):
         #     nn.Linear(in_features=self.pred_dims[1], out_features=n_classes, bias=True)
         # )
         self.decoder = ResNet18Dec(z_dim=z_dim)
+    
+    def decoder_forward(self,x):
+        z = self.encoder(x)
+        x_ = self.decoder(z)
+        
+        return x_
+    
+    def predictor_forward(self,x):
+        z = self.encoder(x)
+        z = z.view(z.size(0), -1)
+        pred = self.predictor(z)
+        
+        return pred
 
     def forward(self, x):
         #mean, logvar = self.encoder(x)
