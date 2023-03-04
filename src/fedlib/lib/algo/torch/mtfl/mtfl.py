@@ -71,7 +71,7 @@ class Trainer(BaseTrainer):
                 #pred_out = model.predictor(representation.view(x.size(0), -1))
                 #decodes_out = model.decoder(x)
 
-                loss = criterion_pred(pred_out, torch.tensor([label_map[int(l)] for l in labels]))
+                loss = criterion_pred(pred_out, torch.tensor([label_map[int(l)] for l in labels]).to(device))
                 #loss2 = criterion_rep(decodes_out, x)
                 #loss = loss1 + loss2
 
@@ -181,7 +181,7 @@ class Trainer(BaseTrainer):
                 x = x.to(device)
                 target = target.to(device)
                 pred, _ = model(x)
-                loss = criterion(pred, torch.tensor([label_map[int(t)] for t in target]))
+                loss = criterion(pred, torch.tensor([label_map[int(t)] for t in target]).to(device))
 
                 # if args.dataset == "stackoverflow_lr":
                 #     predicted = (pred > 0.5).int()
