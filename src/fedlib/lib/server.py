@@ -10,7 +10,7 @@ class Server:
         # self._aggregate_fn = kwargs["aggregate_fn"]
         self._trainer = kwargs["trainer"]
         self._communicator = kwargs["communicator"]
-
+        self._epochs = kwargs["epochs"]
         self._test_dataset = kwargs["test_dl_global"]
         '''initialize key pair'''
         self._key_generator()
@@ -101,3 +101,29 @@ class Server:
 
     def to(self,device):
         pass
+
+
+class ClusterServer(Server):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.id = kwargs["id"]
+        self._root_server = kwargs["root_server"]
+        self._task = kwargs["task"]
+        self._label_map = kwargs["label_map"]
+        self._clients = kwargs["clients"]
+
+    def get_cluster_predictor_params(self):
+        return self._global_model.predictor.cpu().state_dict()
+    
+    def cluster_update(self, **kwargs):
+        global_params = self._trainer.aggregate(**kwargs)
+        self.set_cluster_predictor_params(global_params)
+    
+    def set_cluster_predictor_params(self, model_parameters):
+        self._global_model.predictor.load_state_dict(model_parameters)
+    
+    def set_cluster_encoder_params(self, model_parameters):
+        self._global_model.encoder.load_state_dict(model_parameters)
+    
+    def eval(self):
+        return self._trainer.test(self._global_model,self._test_dataset, self._device, self._label_map)

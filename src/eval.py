@@ -1,4 +1,3 @@
-
 import torch
 
 import datetime
@@ -9,7 +8,7 @@ import copy
 import argparse
 from fedlib.utils import get_logger, init_logs
 from fedlib.ve.mtfl import MTFLEnv
-from fedlib.lib import Server, Client
+from fedlib.lib import Server, Client, ClusterServer
 from fedlib.networks import resnet20
 from fedlib.lib.sampler import random_sampler
 from fedlib.lib.algo.torch.mtfl import Trainer
@@ -38,7 +37,9 @@ class NISTAutoencoder(nn.Module):
             nn.Linear(64*4*4, embedding_dim),
         )
         #Predictor
-        self.predictor = nn.Linear(in_features=embedding_dim, out_features=10, bias=True)
+        self.predictor = nn.Sequential(
+            nn.Linear(in_features=embedding_dim, out_features=10, bias=True)
+        )
         # Decoder layers
         self.decoder = nn.Sequential(
             nn.Linear(embedding_dim, 64*4*4),
@@ -221,8 +222,8 @@ def customize_client_model(model,y_train,net_dataidx_map,id):
     out_features = len(new_labels)
     label_map = {j:i for i,j in enumerate(new_labels)}
     
-    in_features = model.predictor.in_features
-    model.predictor = nn.Linear(in_features=in_features, out_features=out_features, bias=True)
+    in_features = model.predictor[0].in_features
+    model.predictor[0] = nn.Linear(in_features=in_features, out_features=out_features, bias=True)
 
     # print("Client",id)
     # print("\t",label_map)
@@ -344,24 +345,33 @@ if __name__ == '__main__':
         args["model"] = copy.deepcopy(model)
         label_map = customize_client_model(args["model"],y_train,net_dataidx_map,id)
         args["label_map"] = label_map
+        clients[id] = Client(**args)
+    
+    cluster_servers = []
+    for idx, (task, client_ids) in enumerate(task_nodes.items()):
+        logger.info('TASK-%d \t %s  :  %s' % (idx, str(task),str(client_ids)))
+        label_map = clients[client_ids[0]]._label_map
+        args["id"] = idx
+        args["clients"] = client_ids
+        args["root_server"] = server
+        args["task"] = task
+        args["label_map"] = label_map
+        args["global_model"] = copy.deepcopy(clients[client_ids[0]]._model)
 
         #Filter data points from global test dataloader to create a cluster test dataloader
-        #Only targets in client's label_map will be included in it's cluster testset
+        #Only targets in cluster's label_map will be included in it's cluster testset
         indices = [idx for idx, target in enumerate(test_dl_global.dataset.target) if target in list(label_map.keys())]
         cluster_dataloader = torch.utils.data.DataLoader(Subset(test_dl_global.dataset, indices),batch_size=32,drop_last=True)
 
-        args["cluster_testloader"] = cluster_dataloader
-        print("Node",id,"cluster:",len(cluster_dataloader.dataset))
-
-        clients[id] = Client(**args)
-    
-    for task, nodes in task_nodes.items():
-        logger.info('Task %s  :  %s' % (str(task),str(nodes)))
+        args["test_dl_global"] =  cluster_dataloader
+        cluster_server = ClusterServer(**args)
+        cluster_servers.append(cluster_server)
+        print("Cluster",idx,"test dataloader:",len(cluster_dataloader.dataset))
 
 
-    simulator = MTFLEnv(server=server, clients=clients, communication_rounds=args["comm_round"],n_clients= args["n_clients"],sample_rate=args["sample"],task_nodes=task_nodes, node_task=node_task)
+    simulator = MTFLEnv(server=server, cluster_servers=cluster_servers, clients=clients, communication_rounds=args["comm_round"],n_clients= args["n_clients"],sample_rate=args["sample"],task_nodes=task_nodes, node_task=node_task)
 
-    simulator.run(local_epochs=args["epochs"])
+    simulator.run()
 
 
 '''

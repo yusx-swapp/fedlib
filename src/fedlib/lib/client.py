@@ -24,12 +24,14 @@ class Client:
         
         self.criterion = kwargs["criterion"]
         self._init_optimizer(kwargs["optimizer"])
+        self._init_pred_optimizer(kwargs["optimizer"])
         self._init_lr_schedular(kwargs["lr_scheduler"])
+        self._init_pred_lr_schedular(kwargs["lr_scheduler"])
 
         self._global_testloader = kwargs["test_dl_global"]
-        self._cluster_testloader = kwargs["cluster_testloader"]
         self._testloader = kwargs["testloader"]
         self._label_map = kwargs["label_map"]
+        self._epochs = kwargs["epochs"]
 
         print("Client:",self.id,"\tTrain:",len(self._trainloader.dataset),"\tTest:",len(self._testloader.dataset))
         
@@ -42,6 +44,17 @@ class Client:
         """
         if optimizer_name.lower() == "sgd":
             self.optimizer = torch.optim.SGD(self._model.parameters(), self._lr)
+        else:
+            raise KeyError("currently only support SGD")
+    
+    def _init_pred_optimizer(self,optimizer_name:str) -> None:
+        """_summary_
+
+        Args:
+            optmizer_name (str): _description_
+        """
+        if optimizer_name.lower() == "sgd":
+            self.pred_optimizer = torch.optim.SGD(self._model.predictor.parameters(), self._lr)
         else:
             raise KeyError("currently only support SGD")
 
@@ -58,21 +71,41 @@ class Client:
             self.scheduler = torch.optim.lr_scheduler.ExponentialLR(self.optimizer, gamma=0.99)
         else:
             raise KeyError
+    
+    def _init_pred_lr_schedular(self,lr_scheduler_name:str) -> None:
+        """_summary_
+
+        Args:
+            lr_scheduler_name (str): _description_
+
+        Raises:
+            KeyError: _description_
+        """
+        if lr_scheduler_name.lower() == "exponentiallr": #ExponentialLR
+            self.pred_scheduler = torch.optim.lr_scheduler.ExponentialLR(self.pred_optimizer, gamma=0.99)
+        else:
+            raise KeyError
 
 
     def _communication(self):
         self._communicator.communication()
     
-    def client_update(self,**kwargs):
+    def client_update(self,layer,**kwargs):
         kwargs["dataloader"] = self._trainloader
         kwargs["device"] = self._device
         kwargs["model"] = self._model   
-        kwargs["optimizer"] = self.optimizer
-        kwargs["scheduler"] = self.scheduler
+        kwargs["optimizer"] = self.optimizer if layer == "encoder" else self.pred_optimizer
+        kwargs["scheduler"] = self.scheduler if layer == "encoder" else self.pred_scheduler
         kwargs["criterion"] = self.criterion
-        kwargs["label_map"] = self._label_map
+        
+        kwargs["epochs"] = self._epochs
 
-        self._trainer.train(**kwargs)
+        if layer == "encoder":
+            self._trainer.train_encoder(**kwargs)
+        elif layer == "predictor":
+            kwargs["label_map"] = self._label_map
+            self._trainer.train_predictor(**kwargs)
+        
     
     @abstractmethod
     def client_run(self, **kwargs):
@@ -96,7 +129,7 @@ class Client:
             try:
                 return self._model.get_submodule(module_name).cpu().state_dict()
             except:
-                raise KeyError("Module Not Exists")
+                raise KeyError("Module '%s' does not exist!" % module_name)
 
         return self._model.cpu().state_dict()
 
@@ -108,7 +141,7 @@ class Client:
             try:
                 self._model.get_submodule(module_name).load_state_dict(model_parameters)
             except:
-                raise KeyError("Module Not Exists")
+                raise KeyError("Module '%s' does not exist!" % module_name)
         
         else:
             self._model.load_state_dict(model_parameters)

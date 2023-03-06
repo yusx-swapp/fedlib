@@ -3,12 +3,103 @@ from torch import nn
 from torchvision import transforms
 from .....utils import get_logger
 from ...base import BaseTrainer
-logger = get_logger()
 
 class Trainer(BaseTrainer):
     def __init__(self,logger=None) -> None:
         super().__init__()
-        self.logger = logger
+        self.logger = get_logger()
+    
+    def train_encoder(self,model:nn.Module, dataloader , criterion, optimizer, scheduler, epochs:int, device):
+        model.to(device)
+        model.train()
+        criterion_rep = criterion["criterion_rep"]
+        epoch_loss = []
+
+        #Freeze the predictor when training the encoder
+        for param in model.predictor.parameters():
+            param.requires_grad = False
+
+        #First train the decoder
+        for epoch in range(epochs):
+            batch_loss = []
+            for batch_idx, (x, labels) in enumerate(dataloader):
+                x = x.to(device)
+                model.zero_grad()
+
+                decodes_out = model.decoder_forward(x)
+                loss = criterion_rep(decodes_out, x)
+                batch_loss.append(loss.item())
+
+                loss.backward()
+
+                optimizer.step()
+            
+            scheduler.step()
+            epoch_loss.append(sum(batch_loss) / len(batch_loss) if batch_loss else 0)
+
+            if self.logger is not None:
+                self.logger.info('Dec epoch: {}\tLoss: {:.6f}'.format(epoch, epoch_loss[-1]))
+        
+        #Unfreeze the predictor when training the encoder
+        for param in model.predictor.parameters():
+            param.requires_grad = True
+        
+        #return epoch_loss
+    
+    def train_predictor(self,model:nn.Module, dataloader , criterion, optimizer, scheduler, epochs:int, device, label_map):
+        criterion_pred = criterion["criterion_pred"]
+        epoch_loss = []
+
+        #Freeze the encoder when training the predictor
+        for param in model.encoder.parameters():
+            param.requires_grad = False
+        
+        #Next, train the predictor by freezing the encoder params
+        for epoch in range(epochs):
+            batch_loss = []
+            for batch_idx, (x, labels) in enumerate(dataloader):
+                x, labels = x.to(device), labels.to(device)
+                
+                model.zero_grad()
+                
+                #TODO @Sixing Integrate the decoder to the model? Waq, I'll provide an API for this, you may run experiments and tested it.
+                #representation, _ = model.encoder(x)
+                #Swap upper line for lower line when using MNIST encoder which returns just a single value
+                #representation = model.encoder(x)
+                
+                pred_out = model.predictor_forward(x)
+
+                #pred_out = torch.argmax(pred_out, axis=1)
+
+                #pred_out = model.predictor(representation.view(x.size(0), -1))
+                #decodes_out = model.decoder(x)
+
+                loss = criterion_pred(pred_out, torch.tensor([label_map[int(l)] for l in labels]).to(device))
+
+                #loss2 = criterion_rep(decodes_out, x)
+                #loss = loss1 + loss2
+
+                batch_loss.append(loss.item())
+
+                loss.backward()
+
+                # to avoid nan loss
+                # torch.nn.utils.clip_grad_norm_(self.model.parameters(), 0.5)
+
+                optimizer.step()
+                batch_loss.append(loss.item())
+            
+            epoch_loss.append(sum(batch_loss) / len(batch_loss) if batch_loss else 0)
+            scheduler.step()
+            
+            if self.logger is not None:
+                self.logger.info('Pred epoch: {}\tLoss: {:.6f}'.format(epoch, epoch_loss[-1]))
+        
+        #Unfreeze the encoder when training the predictor
+        for param in model.encoder.parameters():
+            param.requires_grad = True
+        
+        #return epoch_loss
 
 
     def train(self, model:nn.Module, dataloader , criterion, optimizer, scheduler, epochs:int, device, label_map):
@@ -88,7 +179,7 @@ class Trainer(BaseTrainer):
             epoch_loss.append(sum(batch_loss) / len(batch_loss) if batch_loss else 0)
             
             if self.logger is not None:
-                logger.info('Epoch: {}\tLoss: {:.6f}'.format(
+                self.logger.info('Epoch: {}\tLoss: {:.6f}'.format(
                     epoch, sum(epoch_loss) / len(epoch_loss)))
 
             #TODO @Sixing: Need add an argument `save_dir` to save the decoder img
@@ -146,6 +237,7 @@ class Trainer(BaseTrainer):
                 loss = criterion(x_, x)
                 total_loss += loss
                 batches += 1
+                break #Single batch test is enough
 
         return total_loss
 
@@ -181,7 +273,7 @@ class Trainer(BaseTrainer):
                 x = x.to(device)
                 target = target.to(device)
                 pred, _ = model(x)
-                loss = criterion(pred, torch.tensor([label_map[int(t)] for t in target]).to(device))
+                
 
                 # if args.dataset == "stackoverflow_lr":
                 #     predicted = (pred > 0.5).int()
@@ -195,10 +287,10 @@ class Trainer(BaseTrainer):
                 #     _, predicted = torch.max(pred, 1)
                 #     correct = predicted.eq(target).sum()
                 _, predicted = torch.max(pred, 1)
-                correct = predicted.eq(target).sum()
+                correct = predicted.eq(torch.tensor([label_map[int(t)] for t in target]).to(device)).sum()
                 metrics["test_correct"] += correct.item()
                 
-                metrics["test_loss"] += loss.item() * target.size(0)
+                #metrics["test_loss"] += loss.item() * target.size(0)
                 if len(target.size()) == 1:  #
                     metrics["test_total"] += target.size(0)
                 elif len(target.size()) == 2:  # for tasks of next word prediction
