@@ -47,6 +47,8 @@ class Trainer(BaseTrainer):
         #return epoch_loss
     
     def train_predictor(self,model:nn.Module, dataloader , criterion, optimizer, scheduler, epochs:int, device, label_map):
+        model.to(device)
+        model.train()
         criterion_pred = criterion["criterion_pred"]
         epoch_loss = []
 
