@@ -13,7 +13,7 @@ from fedlib.networks import resnet20
 from fedlib.lib.sampler import random_sampler
 from fedlib.lib.algo.torch.mtfl import Trainer
 from fedlib.datasets import partition_data, get_dataloader,get_client_dataloader
-from fedlib.networks import VAE
+from fedlib.networks import VAE, ResNet32Autoencoder
 
 from torch import nn
 from torch.utils.data import Subset
@@ -234,7 +234,7 @@ def customize_client_model(model,y_train,net_dataidx_map,id):
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model', type=str, default='res18AE', help='neural network used in training')
+    parser.add_argument('--model', type=str, default='res18', help='neural network used in training')
     parser.add_argument('--dataset', type=str, default='cifar10', help='dataset used for training')
     parser.add_argument('--net_config', type=lambda x: list(map(int, x.split(', '))))
     parser.add_argument('--partition', type=str, default='homo', help='the data partitioning strategy')
@@ -304,20 +304,31 @@ if __name__ == '__main__':
     
     args["test_dl_global"] = test_dl_global
 
+    n_classes = 10
     if args["dataset"] in ["mnist","fmnist","femnist"]:
         model = NISTAutoencoder()
         x = torch.rand([10,1,28,28])
     elif args["dataset"] == "cifar10":
-        model = VAE(1000,10)
-        #model = Cifar10Autoencoder()
+        if args["model"] == "res18":
+            model = VAE(512,10)
+        elif args["model"] == "res32":
+            model = ResNet32Autoencoder(512,10)
+        else:
+            model = Cifar10Autoencoder()
         x = torch.rand([10,3,32,32])
     elif args["dataset"] == "cifar100":
-        model = VAE(1000,100)
-        #model = Cifar100Autoencoder()
-        x = torch.rand([10,3,32,32])     
+        if args["model"] == "res18":
+            model = VAE(512,100)
+        elif args["model"] == "res32":
+            model = ResNet32Autoencoder(512,100)
+        else:
+            model = Cifar100Autoencoder()
+        x = torch.rand([10,3,32,32])
+        n_classes = 100     
     pred, x_ = model(x)
     print(x.shape,x_.shape,pred.shape)
     assert x_.shape == x.shape
+    assert pred.shape == (x.shape[0],n_classes)
 
     args["global_model"] = model.encoder
     server = Server(**args)
