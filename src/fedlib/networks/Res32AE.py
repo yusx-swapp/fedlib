@@ -10,7 +10,7 @@ class ResNet32Autoencoder(nn.Module):
     def __init__(self, embedding_dim=256,n_classes=10):
         super(ResNet32Autoencoder, self).__init__()
         self.embedding_dim = embedding_dim
-        self.encoder = models.resnet18(pretrained=True) # load ResNet18 pretrained weights
+        self.encoder = models.resnet18(pretrained=False) # load ResNet18 pretrained weights
         self.encoder.fc = nn.Identity() # remove the classification layer
         self.encoder.avgpool = nn.AdaptiveAvgPool2d((1, 1)) # use adaptive pooling to output a 1x1 feature map
         self.embedding = nn.Linear(512, self.embedding_dim) # embedding layer
@@ -60,7 +60,7 @@ class ResNet32Segmentation(nn.Module):
     def __init__(self, embedding_dim=256, n_classes=2):
         super(ResNet32Segmentation, self).__init__()
         self.embedding_dim = embedding_dim
-        self.encoder = models.resnet18(pretrained=True)
+        self.encoder = models.resnet18(pretrained=False)
         self.encoder.fc = nn.Identity()
         self.encoder.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.embedding = nn.Linear(512, self.embedding_dim)
