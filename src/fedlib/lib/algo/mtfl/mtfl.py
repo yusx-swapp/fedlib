@@ -52,11 +52,11 @@ class Trainer(BaseTrainer):
 
             epoch_loss.append(sum(batch_loss) / len(batch_loss) if batch_loss else 0)
 
-        if self.logger is not None:
-            logger.info('Encoder Epoch: {}\tLoss: {:.6f}'.format(
-                    epoch, sum(epoch_loss) / len(epoch_loss)))
-            
-            scheduler.step()
+            if self.logger is not None:
+                logger.info('Encoder Epoch: {}\tLoss: {:.6f}'.format(
+                        epoch, sum(epoch_loss) / len(epoch_loss)))
+                
+                scheduler.step()
         
         for param in model.encoder.parameters():
             param.requires_grad = False

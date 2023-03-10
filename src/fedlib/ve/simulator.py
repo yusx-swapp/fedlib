@@ -38,7 +38,7 @@ class simulator(base):
             local_datasize = []
             self.logger.info('*******starting Rounds %s Optimization******' % str(round+1))
             self.logger.info('Participate Clients: %s' % str(selected+1))
-            
+            avg_acc = 0
             for id in selected:
                 self.logger.info('Optimize the %s-th Clients' % str(id+1))
                 client = self.clients[id]
@@ -53,13 +53,16 @@ class simulator(base):
 
                 metrics = client.eval()
                 self.logger.info(f'*******Client {str(id+1)} Training Finished! Test Accuracy: {str(metrics["test_accuracy"])} ******')
-                client.writer.add_scalar(f'Client {str(id+1)}'+'Test Accuracy', metrics["test_accuracy"],round+1)
-
+                client.writer.add_scalar(f'Accuracy/Client {str(id+1)}', metrics["test_accuracy"],round+1)
+                avg_acc+=metrics["test_accuracy"]
+            avg_acc = avg_acc/(len(selected))
 
             self.server.server_update(nets_params=nets_params, local_datasize=local_datasize,global_model_param= global_model_param)
             metrics = self.server.eval()
             self.logger.info('*******Model Test Accuracy After Server Aggregation: %s *******' % str(metrics["test_accuracy"]))
-            self.server.writer.add_scalar('Global Test Accuracy', metrics["test_accuracy"], round+1)
+            self.server.writer.add_scalar('Accuracy/Global', metrics["test_accuracy"], round+1)
+            self.logger.info('*******Model Avg Local Accuracy: %s *******' % str(avg_acc))
+            self.server.writer.add_scalar('Accuracy/Avg Local Acc', avg_acc, round+1)
             self.logger.info('*******Rounds %s Federated Learning Finished!******' % str(round+1))
 
 
