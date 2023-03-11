@@ -1,4 +1,5 @@
 scikit-learn
 pyyaml
 ipykernel
+transformers
 tensorboard

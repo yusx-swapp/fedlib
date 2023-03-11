@@ -11,7 +11,7 @@ To reproduce our experiments, please follow the instructions to set up environme
 First, creating a python environment via conda:
 
 ```
-conda creat -n fedlib python=3
+conda create -n fedlib python=3
 
 #activate the environment
 source activate fedlib

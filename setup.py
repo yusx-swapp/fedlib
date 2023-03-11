@@ -16,7 +16,12 @@ setup(
     license="BSD-2-Clause License",
     package_dir={"": "src"},
     packages=find_packages("src"),
-    install_requires=[],
+    install_requires=['scikit-learn',
+                    'pyyaml',
+                    'ipykernel',
+                    'transformers',
+                    'tensorboard',
+                    ],
     keywords=['python', 'dataset package', 'model package'],
     classifiers=[
         "Development Status :: Pre ALpha",

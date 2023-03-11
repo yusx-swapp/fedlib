@@ -26,7 +26,7 @@ You will also need to install the NVIDIA Container Toolkit to enable GPU device
 access within Docker containers. This can be found at
 [NVIDIA/nvidia-docker](https://github.com/NVIDIA/nvidia-docker).
 
-### Build your images for FedKEMF
+### Build your images for FedLib
 
 Go to where the Dockerfile located `Docker/Dockerfile`. The Docker configuration is written in the Dockerfile.
 
