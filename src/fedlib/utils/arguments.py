@@ -16,6 +16,10 @@ class Arguments:
             for key, value in self.config.items(section):
                 if not value:
                     pass
+                elif value.lower() in ['true','t']:
+                    value = True
+                elif value.lower() in ['false', 'f']:
+                    value = False
                 else:
                     try:
                         value = int(value)
