@@ -293,6 +293,30 @@ def partition_data(dataset, datadir,  partition, n_parties, beta=0.4,logdir =Non
 
     n_train = y_train.shape[0]
 
+    if partition == "manual":
+        label_idxs = {i:[] for i in np.unique(y_train)}
+        label_node_map = {i:[] for i in label_idxs.keys()} 
+        label_node_map[0] = [0,1,2,9,10,11]
+        label_node_map[1] = [3,4,5,9,10,11]
+        label_node_map[2] = [0,1,2,6,7,8,9,10,11]
+        label_node_map[3] = [3,4,5,6,7,8,9,10,11]
+        label_node_map[4] = [0,1,2,9,10,11]
+        label_node_map[5] = [3,4,5,6,7,8,9,10,11]
+        label_node_map[6] = [0,1,2,9,10,11]
+        label_node_map[7] = [3,4,5,6,7,8,9,10,11]
+        label_node_map[8] = [0,1,2,9,10,11]
+        label_node_map[9] = [3,4,5,9,10,11]
+
+        
+        for i,label in enumerate(y_train):
+            label_idxs[label].append(i)
+        
+        net_dataidx_map = {i:[] for i in range(n_parties)}
+        for label, idxs in label_idxs.items():
+            batch_idxs = np.array_split(idxs, len(label_node_map[label]))
+            for i, net_id in enumerate(label_node_map[label]):
+                net_dataidx_map[net_id] += list(batch_idxs[i])
+
     if partition == "homo":
         idxs = np.random.permutation(n_train)
         batch_idxs = np.array_split(idxs, n_parties)

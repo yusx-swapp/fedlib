@@ -9,7 +9,7 @@ import argparse
 from fedlib.utils import get_logger, init_logs
 from fedlib.ve.mtfl import MTFLEnv
 from fedlib.lib import Server, Client, ClusterServer
-from fedlib.networks import resnet20
+from fedlib.networks import resnet20, resnet32, resnet20_cifar100, resnet32_cifar100
 from fedlib.lib.sampler import random_sampler
 from fedlib.lib.algo.torch.mtfl import Trainer
 from fedlib.datasets import partition_data, get_dataloader,get_client_dataloader
@@ -239,13 +239,12 @@ def get_args():
     parser.add_argument('--net_config', type=lambda x: list(map(int, x.split(', '))))
     parser.add_argument('--partition', type=str, default='homo', help='the data partitioning strategy')
     parser.add_argument('--batch_size', type=int, default=64, help='input batch size for training (default: 64)')
-    parser.add_argument('--lr', type=float, default=0.1, help='learning rate (default: 0.01)')
+    parser.add_argument('--lr', type=float, default=0.01, help='learning rate (default: 0.01)')
     parser.add_argument('--epochs', type=int, default=20, help='number of local epochs')
-    parser.add_argument('--pre_epochs', type=int, default=10, help='number of local pre train epochs')
     parser.add_argument('--n_clients', type=int, default=100,  help='number of workers in a distributed cluster')
     parser.add_argument('--alg', type=str, default='fedavg',
                             help='communication strategy: fedavg/fedprox')
-    parser.add_argument('--comm_round', type=int, default=50, help='number of maximum communication roun')
+    parser.add_argument('--comm_round', type=int, default=50, help='number of maximum communication round')
     parser.add_argument('--is_same_initial', type=int, default=1, help='Whether initial all the models with the same parameters in fedavg')
     parser.add_argument('--init_seed', type=int, default=0, help="Random seed")
     parser.add_argument('--dropout_p', type=float, required=False, default=0.0, help="Dropout probability. Default=0.0")
@@ -310,17 +309,21 @@ if __name__ == '__main__':
         x = torch.rand([10,1,28,28])
     elif args["dataset"] == "cifar10":
         if args["model"] == "res18":
-            model = VAE(512,10)
+            model = resnet20()
+            #model = VAE(512,10)
         elif args["model"] == "res32":
-            model = ResNet32Autoencoder(512,10)
+            model = resnet32()
+            #model = ResNet32Autoencoder(512,10)
         else:
             model = Cifar10Autoencoder()
         x = torch.rand([10,3,32,32])
     elif args["dataset"] == "cifar100":
         if args["model"] == "res18":
-            model = VAE(512,100)
+            #model = VAE(512,100)
+            model = resnet20_cifar100()
         elif args["model"] == "res32":
-            model = ResNet32Autoencoder(512,100)
+            #model = ResNet32Autoencoder(512,100)
+            model = resnet32_cifar100()
         else:
             model = Cifar100Autoencoder()
         x = torch.rand([10,3,32,32])
