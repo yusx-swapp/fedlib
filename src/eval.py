@@ -2,7 +2,7 @@ import torch
 import datetime
 import math
 import torch
-import torchvision.models as models
+from torchvision import models as models
 import numpy as np
 import copy
 import argparse
@@ -111,7 +111,7 @@ if __name__ == '__main__':
         model = resnet20(10)
     elif args["dataset"] == "cifar100":
         #Use torchvision resnet for cifar100
-        model = models.resnet20(num_classes=100)
+        model = models.resnet18(num_classes=100)
    
 
     args["global_model"] = model
