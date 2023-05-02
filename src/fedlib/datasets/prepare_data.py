@@ -8,6 +8,10 @@ from torch.utils import data
 import torchvision
 from torchvision import transforms, datasets
 from torch.utils.data.sampler import SubsetRandomSampler
+from urllib.request import urlopen
+from io import BytesIO
+from zipfile import ZipFile
+import os
 import numpy as np
 from .datasets import MNIST_truncated, FashionMNIST_truncated, SVHN_custom, CIFAR10_truncated, Generated, \
     FEMNIST, CelebA_custom, CIFAR100_truncated
@@ -15,6 +19,16 @@ from ..utils import mkdirs, get_logger
 
 logger = get_logger()
 
+def download_and_unzip(url, extract_to='.'):
+    """Download and unzip a file.
+
+    Args:
+        url (string): URL of the zip file.
+        extract_to (str, optional): Output directory. Defaults to '.'.
+    """
+    http_response = urlopen(url)
+    zipfile = ZipFile(BytesIO(http_response.read()))
+    zipfile.extractall(path=extract_to)
 
 def load_mnist_data(datadir):
     transform = transforms.Compose([transforms.ToTensor()])
@@ -526,9 +540,10 @@ def get_client_dataloader(dataset, datadir, train_bs, test_bs, dataidxs=None, no
         total_train += len(train_ds)
         total_test += len(test_ds)
         if local_test_loader:
-            train_dl = data.DataLoader(dataset=torch.utils.data.Subset(train_ds, dataid[:int(0.8*len(dataid))]), batch_size=train_bs, shuffle=True, drop_last=True)     
-            local_test_dl = data.DataLoader(dataset=torch.utils.data.Subset(train_ds, dataid[int(0.8*len(dataid)):]), batch_size=train_bs, shuffle=True, drop_last=True)    
-            local_test_loaders.append(local_test_dl)
+            train_dl = data.DataLoader(dataset=torch.utils.data.Subset(train_ds, dataid), batch_size=train_bs, shuffle=True, drop_last=True)     
+            #train_dl = data.DataLoader(dataset=torch.utils.data.Subset(train_ds, dataid[:int(0.8*len(dataid))]), batch_size=train_bs, shuffle=True, drop_last=True)     
+            #local_test_dl = data.DataLoader(dataset=torch.utils.data.Subset(train_ds, dataid[int(0.8*len(dataid)):]), batch_size=train_bs, shuffle=True, drop_last=True)    
+            #local_test_loaders.append(local_test_dl)
             logger.info(f"Client ID:{key+1},\tLocal Train Data Size:{len(train_ds)},\tLocal Test Data Size:{len(test_ds)}")
 
         else:
@@ -542,8 +557,75 @@ def get_client_dataloader(dataset, datadir, train_bs, test_bs, dataidxs=None, no
     
     
     
-    return train_loaders, global_test_dl, local_test_loaders
+    return train_loaders, global_test_dl #, local_test_loaders
 
+def get_val_dataloader(dataset, datadir, datasize, val_bs):
+    """Load validation data for the proxy similarity computation.
+
+    Args:
+        dataset (string): Name of the global dataset.
+        datadir (string): Location of the global dataset.
+        datasize (int): Number of samples to be drawn from the dataset.
+        val_bs (int): Batch size for the data loader.
+
+    Returns:
+        torch.utils.data.DataLoader: Data loader for the validation data.
+    """
+    val_dl = None
+    if dataset == 'tinyimagenet':
+        if not os.path.exists('./data/tiny-imagenet-200'):
+            download_and_unzip('http://cs231n.stanford.edu/tiny-imagenet-200.zip','./data/')
+        random_ids = np.random.randint(100000, size=datasize)
+        val_indices = random_ids
+
+        imagenet_mean = [0.485, 0.456, 0.406]
+        imagenet_std = [0.229, 0.224, 0.225]
+
+        val_dl = torch.utils.data.DataLoader(
+            torchvision.datasets.ImageFolder(datadir,
+                                                transform=transforms.Compose([
+                                                transforms.Resize(32), 
+                                                transforms.ToTensor(),
+                                                # Phuong 09/26 change (mean, std) -> same as pretrained imagenet
+                                                transforms.Normalize(mean=imagenet_mean, std=imagenet_std)])),
+            #Phuong 09/26 drop_last=False -> True
+            batch_size=val_bs, drop_last=True, sampler=SubsetRandomSampler(val_indices))
+    
+    elif dataset == 'fmnist':
+        dl_obj = FashionMNIST_truncated
+        transform_val = transforms.Compose([
+                transforms.ToTensor(),])
+        
+        random_ids = np.random.randint(10000, size=datasize)
+        val_indices = random_ids
+
+        val_ds = dl_obj(datadir, dataidxs=val_indices, train=True, transform=transform_val, download=True)
+        val_dl = torch.utils.data.DataLoader(dataset=val_ds, batch_size=val_bs, shuffle=True, drop_last=False)
+    
+    elif dataset == "cifar10":
+        dl_obj = CIFAR10_truncated
+        transform_val = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Lambda(lambda x: F.pad(
+                    Variable(x.unsqueeze(0), requires_grad=False),
+                    (4, 4, 4, 4), mode='reflect').data.squeeze()),
+                transforms.ToPILImage(),
+                transforms.RandomCrop(32, padding=4),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                # Phuong 09/26 change (mean, std) -> same as pretrained imagenet
+                transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+                # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+
+            ])
+        random_ids = np.random.randint(10000, size=datasize)
+        val_indices = random_ids
+
+        val_ds = dl_obj(datadir, dataidxs=val_indices, train=True, transform=transform_val, download=True)
+        val_dl = torch.utils.data.DataLoader(dataset=val_ds, batch_size=val_bs, shuffle=True, drop_last=False)
+
+
+    return val_dl
 
 def get_dataloader(dataset, datadir, train_bs, test_bs, dataidxs=None, noise_level=0, net_id=None, total=0, n_worker=32):
     if dataset in ('mnist', 'femnist', 'fmnist', 'cifar100','cifar10', 'svhn', 'generated', 'covtype', 'a9a', 'rcv1', 'SUSY'):

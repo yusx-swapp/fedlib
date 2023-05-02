@@ -15,8 +15,9 @@ class Client:
         self.id = kwargs["id"]
         self._model = kwargs["model"]
         self._trainloader = kwargs["trainloader"]
-        self._testloader = kwargs["testloader"]
+        self._val_dl_global = kwargs["val_dl_global"]
         self._lr = kwargs["lr"]
+        self._global_output = None
 
         self.datasize = len(self._trainloader.dataset)
         self._trainer = kwargs["trainer"]
@@ -70,10 +71,8 @@ class Client:
         """
         if not criterion_name:
             raise KeyError("Please Specify Criterion")
-        elif criterion_name.lower() == 'CrossEntropyLoss'.lower():
-            self.criterion = torch.nn.CrossEntropyLoss()
-        else:
-            raise NotImplementedError
+        self.criterion = torch.nn.CrossEntropyLoss()
+
 
     def _communication(self):
         self._communicator.communication()
@@ -104,29 +103,12 @@ class Client:
     def set_model(self, model):
         self._model = model
 
-    def get_model_params(self, module_name=None):
-        
-        if module_name is not None:
-            try:
-                return self._model.get_submodule(module_name).cpu().state_dict()
-            except:
-                raise KeyError("Module Not Exists")
-
+    def get_model_params(self):
         return self._model.cpu().state_dict()
 
-
     
-    def set_model_params(self, model_parameters,module_name=None):
-        
-        if module_name is not None:
-            try:
-                self._model.get_submodule(module_name).load_state_dict(model_parameters)
-            except:
-                raise KeyError("Module Not Exists")
-        
-        else:
-            self._model.load_state_dict(model_parameters)
-
+    def set_model_params(self, model_parameters):
+        self._model.load_state_dict(model_parameters)
     
 
     def get_dataset(self):
@@ -137,6 +119,9 @@ class Client:
 
     def eval(self):
         return self._trainer.test(self._model, self._testloader, self._device)
+
+    def test_on_global(self):
+        self._global_output = self._trainer.test_on_global(self._model,self._val_dl_global,self._device)
     
     def eval_decoder(self):
         # TODO: integrate this to eval. In Trainer, write two function, test and test decoder, and 

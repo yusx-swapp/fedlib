@@ -3,3 +3,5 @@ pyyaml
 ipykernel
 transformers
 tensorboard
+torch
+torchvision

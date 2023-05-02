@@ -14,7 +14,14 @@ def get_logger():
 def init_logs(log_file_name, args=None, log_dir=None):
     
     #mkdirs(log_dir)
-    mkdirs(os.path.dirname(log_dir), exist_ok=True)
+    try:
+        os.makedirs(os.path.dirname(log_dir))
+    except FileExistsError:
+        # directory already exists, do nothing
+        pass
+
+
+    #mkdirs(os.path.dirname(log_dir), exist_ok=True)
 
     argument_path = log_file_name + '-arguments.json'
     log_path = log_file_name + '-results.log'

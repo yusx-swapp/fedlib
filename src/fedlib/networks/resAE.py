@@ -171,3 +171,86 @@ class VAE(nn.Module):
         std = torch.exp(logvar / 2) # in log-space, squareroot is divide by two
         epsilon = torch.randn_like(std)
         return epsilon * std + mean
+
+
+class NISTAutoencoder(nn.Module):
+    def __init__(self):
+        super(NISTAutoencoder, self).__init__()
+        self.encoder = nn.Sequential(
+            nn.Conv2d(1, 16, 3, stride=3, padding=1),  # b, 16, 10, 10
+            nn.ReLU(True),
+            nn.MaxPool2d(2, stride=2),  # b, 16, 5, 5
+            nn.Conv2d(16, 8, 3, stride=2, padding=1),  # b, 8, 3, 3
+            nn.ReLU(True),
+            nn.MaxPool2d(2, stride=1)  # b, 8, 2, 2
+        )
+        self.predictor = nn.Linear(in_features=32, out_features=10, bias=True)
+        self.decoder = nn.Sequential(
+            nn.ConvTranspose2d(8, 16, 3, stride=2),  # b, 16, 5, 5
+            nn.ReLU(True),
+            nn.ConvTranspose2d(16, 8, 5, stride=3, padding=1),  # b, 8, 15, 15
+            nn.ReLU(True),
+            nn.ConvTranspose2d(8, 1, 2, stride=2, padding=1),  # b, 1, 28, 28
+            nn.Tanh()
+        )
+
+
+    def forward(self, x):
+        z = self.encoder(x)
+        x_ = self.decoder(z)
+        z = z.view(z.size(0), -1)
+        pred = self.predictor(z)
+        
+        return pred, x_
+
+class Cifar10Autoencoder(nn.Module):
+    def __init__(self):
+        super(Cifar10Autoencoder,self).__init__()
+        
+        self.encoder = nn.Sequential(
+            nn.Conv2d(3, 6, kernel_size=5),
+            nn.ReLU(True),
+            nn.Conv2d(6,16,kernel_size=5),
+            nn.ReLU(True))
+        self.predictor = nn.Sequential(
+            nn.Linear(in_features=9216, out_features=120, bias=True),
+            nn.Linear(in_features=120, out_features=84, bias=True),
+            nn.Linear(in_features=84, out_features=10, bias=True)
+        )
+        self.decoder = nn.Sequential(             
+            nn.ConvTranspose2d(16,6,kernel_size=5),
+            nn.ReLU(True),
+            nn.ConvTranspose2d(6,3,kernel_size=5),
+            nn.ReLU(True))
+    def forward(self,x):
+        x = self.encoder(x)
+        x = x.view(x.size(0), -1)
+        pred = self.predictor(x)
+        x_ = self.decoder(x)
+        return pred, x_
+
+class Cifar100Autoencoder(nn.Module):
+    def __init__(self):
+        super(Cifar100Autoencoder,self).__init__()
+        
+        self.encoder = nn.Sequential(
+            nn.Conv2d(3, 6, kernel_size=5),
+            nn.ReLU(True),
+            nn.Conv2d(6,16,kernel_size=5),
+            nn.ReLU(True))
+        self.predictor = nn.Sequential(
+            nn.Linear(in_features=9216, out_features=120, bias=True),
+            nn.Linear(in_features=120, out_features=84, bias=True),
+            nn.Linear(in_features=84, out_features=100, bias=True)
+        )
+        self.decoder = nn.Sequential(             
+            nn.ConvTranspose2d(16,6,kernel_size=5),
+            nn.ReLU(True),
+            nn.ConvTranspose2d(6,3,kernel_size=5),
+            nn.ReLU(True))
+    def forward(self,x):
+        x = self.encoder(x)
+        x = x.view(x.size(0), -1)
+        pred = self.predictor(x)
+        x_ = self.decoder(x)
+        return pred, x_

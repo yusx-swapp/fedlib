@@ -12,10 +12,12 @@ class Server:
         
         self._trainer = kwargs["trainer"]
         self._communicator = kwargs["communicator"]
+        self._sim_matrix =  [[ 0 if i == j else None for j in range(self._n_clients)] for i in range(self._n_clients)]
+        self._clusters = {}
         
         
         #TODO: change to testloader
-        self._test_dataset = kwargs["test_dataset"]
+        self._test_dataset = kwargs["test_dl_global"]
         
         #TODO: add attribute client participation rate
         
@@ -39,6 +41,8 @@ class Server:
         """
         if sampler_name.lower() == "random":
             self.sampler = random_sampler
+        elif sampler_name.lower() == "stratified_cluster_sampler":
+            self.sampler = stratified_cluster_sampler
         else:
             raise KeyError("currently only support random sampler")
 

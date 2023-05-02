@@ -1,105 +1,21 @@
-
 import torch
-
 import datetime
-
+import math
 import torch
+import torchvision.models as models
 import numpy as np
 import copy
 import argparse
 from fedlib.utils import get_logger, init_logs
-from fedlib.ve.mtfl import MTFLEnv
+from fedlib.ve.csfl import CSFLEnv
 from fedlib.lib import Server, Client
-from fedlib.networks import resnet20
-from fedlib.lib.sampler import random_sampler
-from fedlib.lib.algo.torch.mtfl import Trainer
-from fedlib.datasets import partition_data, get_dataloader,get_client_dataloader
-from fedlib.networks import VAE
+from fedlib.networks import resnet20, NeuralNet
+from fedlib.lib.sampler import stratified_cluster_sampler
+from fedlib.lib.algo.fedcs import Trainer
+from fedlib.datasets import partition_data, get_dataloader,get_client_dataloader, get_val_dataloader
+from fedlib.networks import VAE, NISTAutoencoder, Cifar100Autoencoder, Cifar10Autoencoder
 
 from torch import nn
-
-
-class NISTAutoencoder(nn.Module):
-    def __init__(self):
-        super(NISTAutoencoder, self).__init__()
-        self.encoder = nn.Sequential(
-            nn.Conv2d(1, 16, 3, stride=3, padding=1),  # b, 16, 10, 10
-            nn.ReLU(True),
-            nn.MaxPool2d(2, stride=2),  # b, 16, 5, 5
-            nn.Conv2d(16, 8, 3, stride=2, padding=1),  # b, 8, 3, 3
-            nn.ReLU(True),
-            nn.MaxPool2d(2, stride=1)  # b, 8, 2, 2
-        )
-        self.predictor = nn.Linear(in_features=32, out_features=10, bias=True)
-        self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(8, 16, 3, stride=2),  # b, 16, 5, 5
-            nn.ReLU(True),
-            nn.ConvTranspose2d(16, 8, 5, stride=3, padding=1),  # b, 8, 15, 15
-            nn.ReLU(True),
-            nn.ConvTranspose2d(8, 1, 2, stride=2, padding=1),  # b, 1, 28, 28
-            nn.Tanh()
-        )
-
-
-    def forward(self, x):
-        z = self.encoder(x)
-        x_ = self.decoder(z)
-        z = z.view(z.size(0), -1)
-        pred = self.predictor(z)
-        
-        return pred, x_
-
-class Cifar10Autoencoder(nn.Module):
-    def __init__(self):
-        super(Cifar10Autoencoder,self).__init__()
-        
-        self.encoder = nn.Sequential(
-            nn.Conv2d(3, 6, kernel_size=5),
-            nn.ReLU(True),
-            nn.Conv2d(6,16,kernel_size=5),
-            nn.ReLU(True))
-        self.predictor = nn.Sequential(
-            nn.Linear(in_features=9216, out_features=120, bias=True),
-            nn.Linear(in_features=120, out_features=84, bias=True),
-            nn.Linear(in_features=84, out_features=10, bias=True)
-        )
-        self.decoder = nn.Sequential(             
-            nn.ConvTranspose2d(16,6,kernel_size=5),
-            nn.ReLU(True),
-            nn.ConvTranspose2d(6,3,kernel_size=5),
-            nn.ReLU(True))
-    def forward(self,x):
-        x = self.encoder(x)
-        x = x.view(x.size(0), -1)
-        pred = self.predictor(x)
-        x_ = self.decoder(x)
-        return pred, x_
-
-class Cifar100Autoencoder(nn.Module):
-    def __init__(self):
-        super(Cifar100Autoencoder,self).__init__()
-        
-        self.encoder = nn.Sequential(
-            nn.Conv2d(3, 6, kernel_size=5),
-            nn.ReLU(True),
-            nn.Conv2d(6,16,kernel_size=5),
-            nn.ReLU(True))
-        self.predictor = nn.Sequential(
-            nn.Linear(in_features=9216, out_features=120, bias=True),
-            nn.Linear(in_features=120, out_features=84, bias=True),
-            nn.Linear(in_features=84, out_features=100, bias=True)
-        )
-        self.decoder = nn.Sequential(             
-            nn.ConvTranspose2d(16,6,kernel_size=5),
-            nn.ReLU(True),
-            nn.ConvTranspose2d(6,3,kernel_size=5),
-            nn.ReLU(True))
-    def forward(self,x):
-        x = self.encoder(x)
-        x = x.view(x.size(0), -1)
-        pred = self.predictor(x)
-        x_ = self.decoder(x)
-        return pred, x_
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -153,11 +69,15 @@ if __name__ == '__main__':
     logger = get_logger()
 
     args["device"] = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    args['sample_fn'] = random_sampler
+    args['sample_fn'] = stratified_cluster_sampler
     args['trainer'] = Trainer(logger)
     args['communicator'] = None
     args["datadir"] = "./data"
+    args["log_dir"] = log_dir
     args["lr_scheduler"] = "ExponentialLR"  
+    args["sampler"] = "stratified_cluster_sampler"
+    args['num_clusters'] = math.ceil(math.log2(args['n_clients']))
+    args["sim_measure"] = "kl" #optionally EMD for earth movers distance
 
     print("Args:",args)
 
@@ -168,51 +88,59 @@ if __name__ == '__main__':
                                                                                     args["datadir"],
                                                                                       args["batch_size"],
                                                                                       32)
+    print(args)
+    #Setup global dataset dataloader
+    if args["dataset"] in ["cifar10","cifar100"]:
+        val_dl_global = get_val_dataloader("tinyimagenet", "./data/tiny-imagenet-200/", 1000, 32)
+    elif args["dataset"] in ["mnist","femnist"]:
+        val_dl_global = get_val_dataloader("fmnist", "./data/", 1000, 32)
+    elif args["dataset"] in ["tinyimagenet"]:
+         val_dl_global = get_val_dataloader("cifar10", "./data/", 1000, 32)
+
     print("train_dl_global:",len(train_dl_global.dataset))
     print("test_dl_global:",len(test_dl_global.dataset))
     
     args["test_dl_global"] = test_dl_global
 
     if args["dataset"] in ["mnist","fmnist","femnist"]:
-        model = NISTAutoencoder()
-        x = torch.rand([10,1,28,28])
+        #Custom NIST FFNN model
+        input_size, hidden_size, num_classes = 784, 10, 10
+        model = NeuralNet(input_size, hidden_size, num_classes)
     elif args["dataset"] == "cifar10":
-        model = VAE(1000,10)
-        #model = Cifar10Autoencoder()
-        x = torch.rand([10,3,32,32])
+        #Use custom resnet for cifar10
+        model = resnet20(10)
     elif args["dataset"] == "cifar100":
-        model = VAE(1000,100)
-        #model = Cifar100Autoencoder()
-        x = torch.rand([10,3,32,32])     
-    pred, x_ = model(x)
-    print(x.shape,x_.shape,pred.shape)
+        #Use torchvision resnet for cifar100
+        model = models.resnet20(num_classes=100)
+   
 
-    args["global_model"] = model.encoder
+    args["global_model"] = model
     server = Server(**args)
     clients = {}
 
     data_loaders, test_loaders = get_client_dataloader(args["dataset"], args["datadir"], args['batch_size'], 32, net_dataidx_map)
 
     criterion_pred = torch.nn.CrossEntropyLoss()
-    criterion_rep = torch.nn.MSELoss()
 
-    args["criterion"]={
-        "criterion_rep": criterion_rep,
-        "criterion_pred": criterion_pred
-        }
-
+    args["criterion"]= criterion_pred
+    
     for id in range(args["n_clients"]):
         # dataidxs = net_dataidx_map[id]
         args["id"] = id
         # args["trainloader"], _, _, _ = get_dataloader(args["dataset"], args["datadir"], args['batch_size'], 32, dataidxs)
         args["trainloader"] = data_loaders[id]
-        args["testloader"] = test_loaders[id]
+        args["val_dl_global"] = val_dl_global
         args["model"] = copy.deepcopy(model)
         print("Client:",id)
         clients[id] = Client(**args)
 
-    simulator = MTFLEnv(server=server, clients=clients, communication_rounds=args["comm_round"],n_clients= args["n_clients"],sample_rate=args["sample"])
+    simulator = CSFLEnv(server=server, clients=clients, communication_rounds=args["comm_round"],
+                        n_clients= args["n_clients"],sample_rate=args["sample"], val_dl_global=val_dl_global)
 
+    simulator.pretrain(local_epochs=args["epochs"])
+    print("Done pretraining")
+    simulator.cluster(sim_measure=args["sim_measure"],num_clusters=args["num_clusters"])
+    print("Done clustering")
     simulator.run(local_epochs=args["epochs"])
 
 
