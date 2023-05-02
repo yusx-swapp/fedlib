@@ -1,5 +1,6 @@
 import torch.nn.functional as F
 import torch.nn as nn
+import torch
 from sklearn.cluster import KMeans
 from typing import Dict
 from ..lib.server import Server
@@ -82,7 +83,7 @@ class CSFLEnv:
 
         if any(None in sublist for sublist in self.server._sim_matrix):
             raise IndexError("Can't cluster clients before the SIM_MAT is complete.")
-        kmeans = KMeans(n_clusters=num_clusters, random_state=0).fit(self.server._sim_matrix)
+        kmeans = KMeans(n_clusters=num_clusters, random_state=0).fit(torch.tensor(self.server._sim_matrix).cpu().data.numpy())
         assert len(kmeans.labels_) == self.n_clients
         self.server._clusters = {i:[] for i in range(num_clusters)}
         #Map cluster_id : [client_id,..]
