@@ -7,7 +7,7 @@ def stratified_cluster_sampler(n_clients, clusters, sample_rate):
     assert n_clients == sum([len(cluster) for _,cluster in clusters.items()])
     selected = []
     for _,cluster in clusters.items():
-        size = int(sample_rate * (len(cluster)))
+        size = round(sample_rate * (len(cluster)))
         size = max(1,size)
         random.shuffle(cluster)
         #print("cluster:",cluster,"\tsize:",size)
