@@ -108,6 +108,7 @@ class CSFLEnv:
                 if id != client.id:
                     raise IndexError("client id doesn't match")
                 
+                client.set_model_params(globa_model)
                 client.client_update( epochs=local_epochs)
                 nets_encoders.append(client.get_model_params())
                 local_datasize.append(client.datasize)            
@@ -135,5 +136,3 @@ class CSFLEnv:
             accuracy = self.server.eval()["test_accuracy"]                
 
             self.logger.info('Global accuracy: {:.3f}'.format(accuracy))
-            #Cannot call server.eval() since global model has no predictor/decoder head
-            #self.server.eval()
