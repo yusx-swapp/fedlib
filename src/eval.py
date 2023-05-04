@@ -111,7 +111,8 @@ if __name__ == '__main__':
         model = resnet20(10)
     elif args["dataset"] == "cifar100":
         #Use torchvision resnet for cifar100
-        model = models.resnet18(num_classes=100)
+        #model = models.resnet18(num_classes=100)
+        model = resnet20(100)
    
 
     args["global_model"] = model
