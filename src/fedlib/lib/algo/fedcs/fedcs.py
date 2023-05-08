@@ -39,7 +39,7 @@ class Trainer(BaseTrainer):
                 model.zero_grad()
                 
                 pred_out = model.forward(x)
-
+                #print("x.shape:",x.shape,"pred_out.shape:",pred_out.shape,"\tlabels.shape",labels.shape)
                 loss = criterion_pred(pred_out, torch.tensor(labels).to(device))
 
                 loss.backward()

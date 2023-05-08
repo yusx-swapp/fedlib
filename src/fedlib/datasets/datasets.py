@@ -773,8 +773,6 @@ class FEMNIST(MNIST):
             self.data = self.data[self.dataidxs]
             self.targets = self.targets[self.dataidxs]        
 
-            # convert grayscale to RGB images
-            #self.data[:] = self.data.expand(-1, 3, -1, -1)
 
     def __getitem__(self, index):
         img, target = self.data[index], int(self.targets[index])

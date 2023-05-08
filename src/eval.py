@@ -24,8 +24,8 @@ def get_args():
     parser.add_argument('--net_config', type=lambda x: list(map(int, x.split(', '))))
     parser.add_argument('--partition', type=str, default='homo', help='the data partitioning strategy')
     parser.add_argument('--batch_size', type=int, default=64, help='input batch size for training (default: 64)')
-    parser.add_argument('--lr', type=float, default=0.1, help='learning rate (default: 0.01)')
-    parser.add_argument('--epochs', type=int, default=20, help='number of local epochs')
+    parser.add_argument('--lr', type=float, default=0.01, help='learning rate (default: 0.01)')
+    parser.add_argument('--epochs', type=int, default=10, help='number of local epochs')
     parser.add_argument('--pre_epochs', type=int, default=10, help='number of local pre train epochs')
     parser.add_argument('--n_clients', type=int, default=100,  help='number of workers in a distributed cluster')
     parser.add_argument('--alg', type=str, default='fedavg',
@@ -49,6 +49,9 @@ def get_args():
     parser.add_argument('--rho', type=float, default=0, help='Parameter controlling the momentum SGD')
     parser.add_argument('--local_acc', type=int, default=1, help='Enable local accuracy collection [0,1]')
     parser.add_argument('--sample', type=float, default=0.1, help='Sample ratio for each communication round')
+    parser.add_argument('--split', type=str, default='byclass', help='How to split FEMNIST dataset')
+    parser.add_argument('--lr_scheduler', type=str, default='ExponentialLR', help='Learning rate scheduler')
+    parser.add_argument('--decay_rate', type=float, default=.99, help='Learning rate scheduler decay rate')
 
     args = parser.parse_args()
     return args
@@ -60,9 +63,11 @@ if __name__ == '__main__':
     
     NOW = str(datetime.datetime.now()).replace(" ","--")
     log_file_name = 'experiment_log-%s' % (datetime.datetime.now().strftime("%Y-%m-%d-%H:%M-%S"))
-    log_dir = './logs/{}_dataset[{}]_model[{}]_partition[{}]_nodes[{}]_rounds[{}]_frac[{}]_local_ep[{}]_local_bs[{}]_beta[{}]_noise[{}]/'. \
-        format(NOW,args.dataset, args.model, args.partition, args.n_clients, args.comm_round, args.sample,args.epochs, args.batch_size, args.beta, args.noise)
-
+    # log_dir = './logs/{}_dataset[{}]_model[{}]_partition[{}]_nodes[{}]_rounds[{}]_frac[{}]_local_ep[{}]_local_bs[{}]_beta[{}]_noise[{}]/'. \
+    #     format(NOW,args.dataset, args.model, args.partition, args.n_clients, args.comm_round, args.sample,args.epochs, args.batch_size, args.beta, args.noise)
+    log_dir = './logs/{}_dataset[{}]_model[{}]_partition[{}]_algo[{}]_clients[{}]_rounds[{}]_frac[{}]_lr[{}]_scheduler[{}]_decay_rate[{}]_local_bs[{}]_beta[{}]_noise[{}]/'. \
+        format(NOW,args.dataset, args.model, args.partition, "CSFL", args.n_clients, args.comm_round, args.sample, args.lr, args.lr_scheduler, args.decay_rate, args.batch_size, args.beta, args.noise)
+    
     args = vars(args)
     
     init_logs(log_file_name, args, log_dir)
@@ -74,7 +79,7 @@ if __name__ == '__main__':
     args['communicator'] = None
     args["datadir"] = "./data"
     args["log_dir"] = log_dir
-    args["lr_scheduler"] = "ExponentialLR"  
+    args["lr_scheduler"] = "ExponentialLR" 
     args["sampler"] = "stratified_cluster_sampler"
     args['num_clusters'] = math.ceil(math.log2(args['n_clients']))
     args["sim_measure"] = "kl" #optionally EMD for earth movers distance
@@ -82,12 +87,16 @@ if __name__ == '__main__':
     print("Args:",args)
 
     X_train, y_train, X_test, y_test, net_dataidx_map, traindata_cls_counts = partition_data(
-    args["dataset"], args["datadir"], args['partition'], args['n_clients'], beta=args['beta'])
+    args["dataset"],args["datadir"], args['partition'], args['n_clients'], beta=args['beta'],split=args['split'])
     n_classes = len(np.unique(y_train))
+    print("X_train.shape:",X_train.shape,"\ty_train.shape:",y_train.shape)
+    print("X_test.shape:",X_test.shape,"\ty_test.shape:",y_test.shape)
+    print("LABELS:",n_classes)
     train_dl_global, test_dl_global, train_ds_global, test_ds_global = get_dataloader(args["dataset"],
                                                                                     args["datadir"],
                                                                                       args["batch_size"],
-                                                                                      32)
+                                                                                      32,
+                                                                                      split=args['split'])
     print(args)
     #Setup global dataset dataloader
     if args["dataset"] in ["cifar10","cifar100"]:
@@ -102,9 +111,13 @@ if __name__ == '__main__':
     
     args["test_dl_global"] = test_dl_global
 
-    if args["dataset"] in ["mnist","fmnist","femnist"]:
+    if args["dataset"] in ["mnist","fmnist"]:
         #Custom NIST FFNN model
         input_size, hidden_size, num_classes = 784, 10, 10
+        model = NeuralNet(input_size, hidden_size, num_classes)
+    elif args["dataset"] in ["femnist"]:
+        #Custom FENIST FFNN model
+        input_size, hidden_size, num_classes = 784, 128, 62
         model = NeuralNet(input_size, hidden_size, num_classes)
     elif args["dataset"] == "cifar10":
         #Use custom resnet for cifar10
@@ -119,7 +132,7 @@ if __name__ == '__main__':
     server = Server(**args)
     clients = {}
 
-    data_loaders, test_loaders = get_client_dataloader(args["dataset"], args["datadir"], args['batch_size'], 32, net_dataidx_map)
+    data_loaders, test_loaders = get_client_dataloader(args["dataset"], args["datadir"], args['batch_size'], 32, net_dataidx_map,split=args['split'])
 
     criterion_pred = torch.nn.CrossEntropyLoss()
 

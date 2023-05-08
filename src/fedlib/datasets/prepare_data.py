@@ -148,24 +148,39 @@ def load_celeba_data(datadir):
     return (None, y_train, None, y_test)
 
 
-def load_femnist_data(datadir):
+# def load_femnist_data(datadir):
+#     transform = transforms.Compose([transforms.ToTensor()])
+
+#     mnist_train_ds = FEMNIST(datadir, train=True, transform=transform, download=True)
+#     mnist_test_ds = FEMNIST(datadir, train=False, transform=transform, download=True)
+
+#     X_train, y_train, u_train = mnist_train_ds.data, mnist_train_ds.targets, mnist_train_ds.users_index
+#     X_test, y_test, u_test = mnist_test_ds.data, mnist_test_ds.targets, mnist_test_ds.users_index
+
+#     X_train = X_train.data.numpy()
+#     y_train = y_train.data.numpy()
+#     u_train = np.array(u_train)
+#     X_test = X_test.data.numpy()
+#     y_test = y_test.data.numpy()
+#     u_test = np.array(u_test)
+
+#     return (X_train, y_train, u_train, X_test, y_test, u_test)
+
+def load_femnist_data(datadir,split='byclass'):
+    # load the FEMNIST dataset
     transform = transforms.Compose([transforms.ToTensor()])
 
-    fm_train_ds = FEMNIST(datadir, download=True, train=True, transform=transform)
-    fm_test_ds = FEMNIST(datadir, download=True, train=False, transform=transform)
-    # mnist_train_ds = FEMNIST(datadir, train=True, transform=transform)
-    # mnist_test_ds = FEMNIST(datadir, train=False, transform=transform)
+    femnist_train = datasets.EMNIST(root='./data', split=split, train=True, transform=transform, download=True)
+    femnist_test = datasets.EMNIST(root='./data', split=split, train=False, transform=transform, download=True)
 
-    #X_test, y_test, u_test = mnist_test_ds.data, mnist_test_ds.targets, mnist_test_ds.users_index
-    #X_train, y_train, u_train = mnist_train_ds.data, mnist_train_ds.targets, mnist_test_ds.users_index
+    X_train = femnist_train.data.numpy()
+    y_train = femnist_train.targets.numpy()
+    X_test = femnist_test.data.numpy()
+    y_test = femnist_test.targets.numpy()
 
-    X_test, y_test = fm_test_ds.data, fm_test_ds.targets
-    X_train, y_train = fm_train_ds.data, fm_train_ds.targets
+    
+    return (X_train, y_train, X_test, y_test)
 
-    u_train = fm_train_ds.users_index
-    u_test = fm_test_ds.users_index
-
-    return X_train, y_train, u_train, X_test, y_test, u_test
 
 def record_net_data_stats(y_train, net_dataidx_map, logdir):
     net_cls_counts = {}
@@ -206,7 +221,7 @@ class AddGaussianNoise(object):
     def __repr__(self):
         return self.__class__.__name__ + '(mean={0}, std={1})'.format(self.mean, self.std)
 
-def partition_data(dataset, datadir,  partition, n_parties, beta=0.4,logdir =None):
+def partition_data(dataset, datadir,  partition, n_parties, beta=0.4,logdir =None,split='byclass'):
     # np.random.seed(2020)
     # torch.manual_seed(2020)
 
@@ -223,7 +238,8 @@ def partition_data(dataset, datadir,  partition, n_parties, beta=0.4,logdir =Non
     elif dataset == 'celeba':
         X_train, y_train, X_test, y_test = load_celeba_data(datadir)
     elif dataset == 'femnist':
-        X_train, y_train, u_train, X_test, y_test, u_test = load_femnist_data(datadir)
+        #X_train, y_train, u_train, X_test, y_test, u_test = load_femnist_data(datadir)
+        X_train, y_train, X_test, y_test = load_femnist_data(datadir,split)
     elif dataset == 'generated':
         X_train, y_train = [], []
         for loc in range(4):
@@ -322,8 +338,10 @@ def partition_data(dataset, datadir,  partition, n_parties, beta=0.4,logdir =Non
             # min_require_size = 100
         if dataset == 'cifar100':
             K = 100
-        # elif dataset == 'tinyimagenet':
-        #     K = 200
+        elif dataset == 'tinyimagenet':
+            K = 200
+        elif dataset == 'femnist':
+            K = 62
             
         N = y_train.shape[0]
         np.random.seed(2020)
@@ -410,22 +428,22 @@ def partition_data(dataset, datadir,  partition, n_parties, beta=0.4,logdir =Non
         batch_idxs = np.split(idxs, proportions)
         net_dataidx_map = {i: batch_idxs[i] for i in range(n_parties)}
 
-    elif partition == "real" and dataset == "femnist":
-        num_user = u_train.shape[0]
-        user = np.zeros(num_user + 1, dtype=np.int32)
-        for i in range(1, num_user + 1):
-            user[i] = user[i - 1] + u_train[i - 1]
-        no = np.random.permutation(num_user)
-        batch_idxs = np.array_split(no, n_parties)
-        net_dataidx_map = {i: np.zeros(0, dtype=np.int32) for i in range(n_parties)}
-        for i in range(n_parties):
-            for j in batch_idxs[i]:
-                net_dataidx_map[i] = np.append(net_dataidx_map[i], np.arange(user[j], user[j + 1]))
+    # elif partition == "real" and dataset == "femnist":
+    #     num_user = u_train.shape[0]
+    #     user = np.zeros(num_user + 1, dtype=np.int32)
+    #     for i in range(1, num_user + 1):
+    #         user[i] = user[i - 1] + u_train[i - 1]
+    #     no = np.random.permutation(num_user)
+    #     batch_idxs = np.array_split(no, n_parties)
+    #     net_dataidx_map = {i: np.zeros(0, dtype=np.int32) for i in range(n_parties)}
+    #     for i in range(n_parties):
+    #         for j in batch_idxs[i]:
+    #             net_dataidx_map[i] = np.append(net_dataidx_map[i], np.arange(user[j], user[j + 1]))
 
     traindata_cls_counts = record_net_data_stats(y_train, net_dataidx_map, logdir)
     return (X_train, y_train, X_test, y_test, net_dataidx_map, traindata_cls_counts)
 
-def get_client_dataloader(dataset, datadir, train_bs, test_bs, dataidxs=None, noise_level=0, net_id=None, n_clients=0, local_test_loader = False,n_worker=32):
+def get_client_dataloader(dataset, datadir, train_bs, test_bs, dataidxs=None, noise_level=0, net_id=None, n_clients=0, local_test_loader = False,n_worker=32, split="byclass"):
     assert dataset in ('mnist', 'femnist', 'fmnist', 'cifar100','cifar10', 'svhn', 'generated', 'covtype', 'a9a', 'rcv1', 'SUSY')
     if dataset == 'mnist':
         dl_obj = MNIST_truncated
@@ -437,19 +455,6 @@ def get_client_dataloader(dataset, datadir, train_bs, test_bs, dataidxs=None, no
         transform_test = transforms.Compose([
             transforms.ToTensor(),
             AddGaussianNoise(0., noise_level, net_id, n_clients)])
-
-    elif dataset == 'femnist':
-        dl_obj = FEMNIST
-
-        # Additional transformation from grayscale -> RGB needed here
-        transform_train = transforms.Compose([
-            transforms.ToTensor(),
-            AddGaussianNoise(0., noise_level, net_id, n_clients),
-            transforms.Lambda(lambda x: x.repeat(3, 1, 1))])
-        transform_test = transforms.Compose([
-            transforms.ToTensor(),
-            AddGaussianNoise(0., noise_level, net_id, n_clients),
-            transforms.Lambda(lambda x: x.repeat(3, 1, 1))])
 
     elif dataset == 'fmnist':
         dl_obj = FashionMNIST_truncated
@@ -527,9 +532,16 @@ def get_client_dataloader(dataset, datadir, train_bs, test_bs, dataidxs=None, no
     local_test_loaders = []
     total_train,total_test = 0, 0
 
-    train_ds = dl_obj(datadir, train=True, transform=transform_train, download=True)
-    
-    test_ds = dl_obj(datadir, train=False, transform=transform_test, download=True)
+    if dataset == "femnist":
+        transform = transforms.Compose([transforms.ToTensor()])
+        train_ds = datasets.EMNIST(root='./data', split=split, train=True, transform=transform, download=True)
+        test_ds = datasets.EMNIST(root='./data', split=split, train=False, transform=transform, download=True)
+        train_dl = data.DataLoader(dataset=train_ds, batch_size=train_bs, shuffle=True, drop_last=True)     
+        #Phuong 09/26 drop_last=False -> True
+        test_dl = data.DataLoader(dataset=test_ds, batch_size=test_bs, shuffle=False, drop_last=True)
+    else:
+        train_ds = dl_obj(datadir, train=True, transform=transform_train, download=True)
+        test_ds = dl_obj(datadir, train=False, transform=transform_test, download=True)
 
     global_test_dl = data.DataLoader(dataset=test_ds, batch_size=test_bs, shuffle=False, drop_last=True)
 
@@ -627,7 +639,7 @@ def get_val_dataloader(dataset, datadir, datasize, val_bs):
 
     return val_dl
 
-def get_dataloader(dataset, datadir, train_bs, test_bs, dataidxs=None, noise_level=0, net_id=None, total=0, n_worker=32):
+def get_dataloader(dataset, datadir, train_bs, test_bs, dataidxs=None, noise_level=0, net_id=None, total=0, n_worker=32, split="byclass"):
     if dataset in ('mnist', 'femnist', 'fmnist', 'cifar100','cifar10', 'svhn', 'generated', 'covtype', 'a9a', 'rcv1', 'SUSY'):
         if dataset == 'mnist':
             dl_obj = MNIST_truncated
@@ -640,18 +652,25 @@ def get_dataloader(dataset, datadir, train_bs, test_bs, dataidxs=None, noise_lev
                 transforms.ToTensor(),
                 AddGaussianNoise(0., noise_level, net_id, total)])
 
-        elif dataset == 'femnist':
-            dl_obj = FEMNIST
+        # elif dataset == 'femnist':
+        #     # dl_obj = FEMNIST
 
-            # Additional transformation from grayscale -> RGB needed here
-            transform_train = transforms.Compose([
-                transforms.ToTensor(),
-                AddGaussianNoise(0., noise_level, net_id, total),
-                transforms.Lambda(lambda x: x.repeat(3, 1, 1))])
-            transform_test = transforms.Compose([
-                transforms.ToTensor(),
-                AddGaussianNoise(0., noise_level, net_id, total),
-                transforms.Lambda(lambda x: x.repeat(3, 1, 1))])
+        #     # Additional transformation from grayscale -> RGB needed here
+        #     # transform_train = transforms.Compose([
+        #     #     transforms.ToTensor(),
+        #     #     AddGaussianNoise(0., noise_level, net_id, total),
+        #     #     transforms.Lambda(lambda x: x.repeat(3, 1, 1))])
+        #     # transform_test = transforms.Compose([
+        #     #     transforms.ToTensor(),
+        #     #     AddGaussianNoise(0., noise_level, net_id, total),
+        #     #     transforms.Lambda(lambda x: x.repeat(3, 1, 1))])
+        #     dl_obj = FEMNIST
+        #     transform_train = transforms.Compose([
+        #         transforms.ToTensor(),
+        #         AddGaussianNoise(0., noise_level, net_id, total)])
+        #     transform_test = transforms.Compose([
+        #         transforms.ToTensor(),
+        #         AddGaussianNoise(0., noise_level, net_id, total)])
 
         elif dataset == 'fmnist':
             dl_obj = FashionMNIST_truncated
@@ -745,6 +764,15 @@ def get_dataloader(dataset, datadir, train_bs, test_bs, dataidxs=None, noise_lev
             transform_train = None
             transform_test = None
 
+        if dataset == "femnist":
+            transform = transforms.Compose([transforms.ToTensor()])
+
+            train_ds = datasets.EMNIST(root='./data', split=split, train=True, transform=transform, download=True)
+            test_ds = datasets.EMNIST(root='./data', split=split, train=False, transform=transform, download=True)
+            train_dl = data.DataLoader(dataset=train_ds, batch_size=train_bs, shuffle=True, drop_last=True)     
+            #Phuong 09/26 drop_last=False -> True
+            test_dl = data.DataLoader(dataset=test_ds, batch_size=test_bs, shuffle=False, drop_last=True)
+            return train_dl, test_dl, train_ds, test_ds
 
         if dataidxs is not None:
             train_ds = dl_obj(datadir, dataidxs=dataidxs[:int(len(dataidxs)*0.8)], train=True, transform=transform_train, download=True)
