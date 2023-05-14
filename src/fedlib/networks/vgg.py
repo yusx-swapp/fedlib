@@ -13,9 +13,9 @@ class VGG(nn.Module):
     '''
     VGG model
     '''
-    def __init__(self, features):
+    def __init__(self, features,n_classes=10):
         super(VGG, self).__init__()
-        self.encoder = features
+        self.features = features
         self.classifier = nn.Sequential(
             nn.Dropout(),
             nn.Linear(512, 512),
@@ -23,9 +23,9 @@ class VGG(nn.Module):
             nn.Dropout(),
             nn.Linear(512, 512),
             nn.ReLU(True),
-            nn.Linear(512, 10),
+            nn.Linear(512, n_classes),
         )
-        # Initialize weights
+         # Initialize weights
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
@@ -34,7 +34,7 @@ class VGG(nn.Module):
 
 
     def forward(self, x):
-        x = self.encoder(x)
+        x = self.features(x)
         x = x.view(x.size(0), -1)
         x = self.classifier(x)
         return x
@@ -58,8 +58,6 @@ def make_layers(cfg, batch_norm=False):
 
 cfg = {
     'A': [64, 'M', 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
-    # 'A': [64, 'M', 90, 'M', 181, 181, 'M', 362, 362, 'M', 362, 512, 'M'],
-    # 'A': [64, 'M', 111, 'M', 222, 222, 'M', 443, 443, 'M', 443, 512, 'M'],
     'B': [64, 64, 'M', 128, 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
     'D': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M'],
     'E': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 256, 'M', 512, 512, 512, 512, 'M',
@@ -67,44 +65,45 @@ cfg = {
 }
 
 
-def vgg11():
+def vgg11(n_classes=10):
     """VGG 11-layer model (configuration "A")"""
-    return VGG(make_layers(cfg['A']))
+    return VGG(make_layers(cfg['A']),n_classes)
 
 
-def vgg11_bn():
+def vgg11_bn(n_classes=10):
     """VGG 11-layer model (configuration "A") with batch normalization"""
-    return VGG(make_layers(cfg['A'], batch_norm=True))
+    return VGG(make_layers(cfg['A'], batch_norm=True),n_classes)
 
 
-def vgg13():
+def vgg13(n_classes=10):
     """VGG 13-layer model (configuration "B")"""
-    return VGG(make_layers(cfg['B']))
+    return VGG(make_layers(cfg['B']),n_classes)
 
 
-def vgg13_bn():
+def vgg13_bn(n_classes=10):
     """VGG 13-layer model (configuration "B") with batch normalization"""
-    return VGG(make_layers(cfg['B'], batch_norm=True))
+    return VGG(make_layers(cfg['B'], batch_norm=True),n_classes)
 
 
-def vgg16():
+def vgg16(n_classes=10):
     """VGG 16-layer model (configuration "D")"""
-    return VGG(make_layers(cfg['D']))
+    return VGG(make_layers(cfg['D']),n_classes)
 
 
-def vgg16_bn():
+def vgg16_bn(n_classes=10):
     """VGG 16-layer model (configuration "D") with batch normalization"""
-    return VGG(make_layers(cfg['D'], batch_norm=True))
+    return VGG(make_layers(cfg['D'], batch_norm=True),n_classes)
 
 
-def vgg19():
+def vgg19(n_classes=10):
     """VGG 19-layer model (configuration "E")"""
-    return VGG(make_layers(cfg['E']))
+    return VGG(make_layers(cfg['E']),n_classes)
 
 
-def vgg19_bn():
+def vgg19_bn(n_classes=10):
     """VGG 19-layer model (configuration 'E') with batch normalization"""
-    return VGG(make_layers(cfg['E'], batch_norm=True))
+    return VGG(make_layers(cfg['E'], batch_norm=True),n_classes)
+
 
 if __name__ == '__main__':
     model = vgg11()

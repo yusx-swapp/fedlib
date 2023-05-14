@@ -9,7 +9,7 @@ import argparse
 from fedlib.utils import get_logger, init_logs
 from fedlib.ve.csfl import CSFLEnv
 from fedlib.lib import Server, Client
-from fedlib.networks import resnet20, NeuralNet
+from fedlib.networks import resnet20, NeuralNet, vgg11
 from fedlib.lib.sampler import stratified_cluster_sampler
 from fedlib.lib.algo.fedcs import Trainer
 from fedlib.datasets import partition_data, get_dataloader,get_client_dataloader, get_val_dataloader
@@ -19,7 +19,7 @@ from torch import nn
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model', type=str, default='res18AE', help='neural network used in training')
+    parser.add_argument('--model', type=str, default='res20', help='neural network used in training')
     parser.add_argument('--dataset', type=str, default='cifar10', help='dataset used for training')
     parser.add_argument('--net_config', type=lambda x: list(map(int, x.split(', '))))
     parser.add_argument('--partition', type=str, default='homo', help='the data partitioning strategy')
@@ -121,11 +121,17 @@ if __name__ == '__main__':
         model = NeuralNet(input_size, hidden_size, num_classes)
     elif args["dataset"] == "cifar10":
         #Use custom resnet for cifar10
-        model = resnet20(10)
+        if args["model"] == "res20":
+            model = resnet20(10)
+        elif args["model"] == "vgg11":
+            model = vgg11(10)
     elif args["dataset"] == "cifar100":
         #Use torchvision resnet for cifar100
         #model = models.resnet18(num_classes=100)
-        model = resnet20(100)
+        if args["model"] == "res20":
+            model = resnet20(100)
+        elif args["model"] == "vgg11":
+            model = vgg11(100)
    
 
     args["global_model"] = model
