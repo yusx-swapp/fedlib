@@ -54,6 +54,7 @@ def get_args():
     parser.add_argument('--split', type=str, default='byclass', help='How to split FEMNIST dataset')
     parser.add_argument('--lr_scheduler', type=str, default='ExponentialLR', help='Learning rate scheduler')
     parser.add_argument('--decay_rate', type=float, default=.99, help='Learning rate scheduler decay rate')
+    parser.add_argument('--num_clusters', type=int, default=0, help='Number of clusters: default=0 meaning log(n)')
 
     args = parser.parse_args()
     return args
@@ -83,7 +84,7 @@ if __name__ == '__main__':
     args["log_dir"] = log_dir
     args["lr_scheduler"] = "ExponentialLR" 
     args["sampler"] = "stratified_cluster_sampler"
-    args['num_clusters'] = math.ceil(math.log2(args['n_clients']))
+    args['num_clusters'] = math.ceil(math.log2(args['n_clients'])) if args['num_clusters'] == 0 else args['num_clusters']
     args["sim_measure"] = "kl" #optionally EMD for earth movers distance
 
     print("Args:",args)
