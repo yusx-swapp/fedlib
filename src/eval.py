@@ -4,6 +4,8 @@ import math
 import torch
 from torchvision import models as models
 import numpy as np
+import torchvision
+from efficientnet_pytorch import EfficientNet
 import copy
 import argparse
 from fedlib.utils import get_logger, init_logs
@@ -125,6 +127,11 @@ if __name__ == '__main__':
             model = resnet20(10)
         elif args["model"] == "vgg11":
             model = vgg11(10)
+        elif args["model"] == "mobilenetv3":
+            model = torchvision.models.mobilenet_v3_small(weights=None, num_classes=n_classes)
+            #net = MobileNetV3('small',n_classes)
+        elif args["model"] == "efficientnet":
+            model = EfficientNet.from_name('efficientnet-b0', num_classes=n_classes)
     elif args["dataset"] == "cifar100":
         #Use torchvision resnet for cifar100
         #model = models.resnet18(num_classes=100)
