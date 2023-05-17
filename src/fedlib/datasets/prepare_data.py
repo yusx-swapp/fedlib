@@ -221,7 +221,7 @@ class AddGaussianNoise(object):
     def __repr__(self):
         return self.__class__.__name__ + '(mean={0}, std={1})'.format(self.mean, self.std)
 
-def partition_data(dataset, datadir,  partition, n_parties, beta=0.4,logdir =None,split='byclass'):
+def partition_data(dataset, datadir,  partition, n_parties, beta=0.4,logdir =None,split='byclass',label_node_map=None):
     # np.random.seed(2020)
     # torch.manual_seed(2020)
 
@@ -322,6 +322,32 @@ def partition_data(dataset, datadir,  partition, n_parties, beta=0.4,logdir =Non
         np.save("data/generated/y_test.npy", y_test)
 
     n_train = y_train.shape[0]
+
+    if partition == "manual":
+        label_idxs = {i:[] for i in np.unique(y_train)}
+        if label_node_map == None:
+            label_node_map = {i:[] for i in label_idxs.keys()}
+            label_node_map[0] = [0,5,10,15,20]
+            label_node_map[1] = [0,5,10,15,20]
+            label_node_map[2] = [1,6,11,16,21]
+            label_node_map[3] = [1,6,11,16,21]
+            label_node_map[4] = [2,7,12,17,22]
+            label_node_map[5] = [2,7,12,17,22]
+            label_node_map[6] = [3,8,13,18,23]
+            label_node_map[7] = [3,8,13,18,23]
+            label_node_map[8] = [4,9,14,19]
+            label_node_map[9] = [4,9,14,19]
+        logger.info('MANUAL PARTITION: %s' % str(label_node_map))
+
+        
+        for i,label in enumerate(y_train):
+            label_idxs[label].append(i)
+        
+        net_dataidx_map = {i:[] for i in range(n_parties)}
+        for label, idxs in label_idxs.items():
+            batch_idxs = np.array_split(idxs, len(label_node_map[label]))
+            for i, net_id in enumerate(label_node_map[label]):
+                net_dataidx_map[net_id] += list(batch_idxs[i])
 
     if partition == "homo":
         idxs = np.random.permutation(n_train)
