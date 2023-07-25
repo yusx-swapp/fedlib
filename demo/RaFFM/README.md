@@ -1,6 +1,6 @@
-# FedLib: Implementation for FedAvg
+# FedLib: Implementation for Resource-aware Federated Foundation Model
 
-This is the implementation for the paper: **Communication-Efficient Learning of Deep Networks from Decentralized Data**
+This is the implementation for the paper: **place holder**
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.7633920.svg)](https://doi.org/10.5281/zenodo.7633920)
 
@@ -22,7 +22,8 @@ Then, installing requirement python packages:
 [Pytorch](https://pytorch.org/get-started/locally/) installation (for Linux):
 
 ```
-conda install pytorch torchvision torchaudio pytorch-cuda=11.6 -c pytorch -c nvidia
+conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
+
 ```
 
 Next, installing other python package dependencies:
