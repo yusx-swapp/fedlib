@@ -1,16 +1,13 @@
 import torch
 import argparse
-from sklearn.metrics import accuracy_score
 from transformers import DistilBertForSequenceClassification, DistilBertTokenizerFast, Trainer, TrainingArguments
 from transformers import RobertaTokenizerFast, T5Tokenizer
 from transformers import DistilBertForSequenceClassification, RobertaForSequenceClassification, T5ForConditionalGeneration
-import numpy as np
-from datasets import load_dataset, concatenate_datasets, load_from_disk
+from datasets import load_dataset, concatenate_datasets
 import logging
 import sys
 import copy
 import os
-from scipy.stats import pearsonr
 from utils import *
 from split_data import DatasetSplitter
 # set no_deprecation_warning to True to avoid warning messages
@@ -166,9 +163,10 @@ if __name__ == "__main__":
     parser.add_argument("--log_dir", type=str, default="centralized/4")
     parser.add_argument("--learning_rate", type=float, default=2e-5)
     parser.add_argument("--model", type=str, default="distilbert", choices=["distilbert", "roberta", "t5"], help="Choose between 'distilbert', 'roberta', and 't5' models")
-
     args = parser.parse_args()
+    
     os.makedirs(args.log_dir, exist_ok=True)
+    
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(message)s",

@@ -3,3 +3,4 @@ pyyaml
 ipykernel
 transformers
 tensorboard
+evaluate
