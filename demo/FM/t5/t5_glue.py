@@ -18,97 +18,45 @@ from scipy.stats import pearsonr
 
 
 
-def compute_metrics(eval_pred, task,model):
+def compute_metrics(eval_pred, task):
     predictions, labels = eval_pred
     if task == "stsb":
         pearson_corr, _ = pearsonr(predictions.squeeze(), labels)
         return {"pearson_corr": pearson_corr}
     else:
-        if 't5' in model:
-            # predictions = predictions.logits.argmax(-1)
-            logits_tuple, labels = eval_pred
-            logits = logits_tuple[0]  # Extract the logits from the tuple
-            predictions = np.argmax(logits, axis=-1)
-            return {"accuracy": accuracy_score(labels.flatten(), predictions.flatten())}
+
+        # predictions = predictions.logits.argmax(-1)
+        logits_tuple, labels = eval_pred
+        logits = logits_tuple[0]  # Extract the logits from the tuple
+        predictions = np.argmax(logits, axis=-1)
+        return {"accuracy": accuracy_score(labels.flatten(), predictions.flatten())}
 
 
-        else: 
-            predictions = predictions.argmax(-1)
-            return {"accuracy": accuracy_score(labels, predictions)}
+    
 
 
-def tokenize_function2(examples, tokenizer, dataset,model=None):
+def tokenize_function(examples, tokenizer, dataset):
+
     if dataset in ["sst2", "cola"]:
+        # tokenized_examples = tokenizer(["classify sentiment: " + sentence for sentence in examples['sentence']], padding="max_length", truncation=True)
+        inputs = [f'classify sentiment: {sentence}' for sentence in examples['sentence']]
+        model_inputs = tokenizer(inputs, max_length=128, truncation=True, padding='max_length', return_tensors='pt')
 
-        return tokenizer(examples['sentence'], padding="max_length", truncation=True)
+    if dataset in ["mrpc", "stsb", "rte"]:
+        inputs = [f'sentence1: {sentence1} sentence2: {sentence2}' for sentence1, sentence2 in zip(examples['sentence1'], examples['sentence2'])]
+        model_inputs = tokenizer(inputs, max_length=128, truncation=True, padding='max_length', return_tensors='pt')
 
-    elif dataset == "mnli":
-        return tokenizer(examples["premise"], examples["hypothesis"], padding="max_length", truncation=True)
-    elif dataset == "qqp":
-        return tokenizer(examples["question1"], examples["question2"], padding="max_length", truncation=True)
-    elif dataset == "qnli":
-        return tokenizer(examples["question"], examples["sentence"], padding="max_length", truncation=True)
-
-    elif dataset in ["mrpc", "stsb", "rte"]:
-        return tokenizer(examples["sentence1"], examples["sentence2"], padding="max_length", truncation=True)
-
-
-def tokenize_function(examples, tokenizer, dataset,model=None):
-
-    if model == "t5":
-        if dataset in ["sst2", "cola"]:
-            # tokenized_examples = tokenizer(["classify sentiment: " + sentence for sentence in examples['sentence']], padding="max_length", truncation=True)
-            inputs = [f'classify sentiment: {sentence}' for sentence in examples['sentence']]
-            model_inputs = tokenizer(inputs, max_length=128, truncation=True, padding='max_length', return_tensors='pt')
-
-        if dataset in ["mrpc", "stsb", "rte"]:
-            inputs = [f'sentence1: {sentence1} sentence2: {sentence2}' for sentence1, sentence2 in zip(examples['sentence1'], examples['sentence2'])]
-            model_inputs = tokenizer(inputs, max_length=128, truncation=True, padding='max_length', return_tensors='pt')
-
-        if 'label' in examples:
-            # Convert the labels to strings and then to sequences of token IDs
-            labels = [str(label) for label in examples["label"]]
-            labels = tokenizer(labels, max_length=128, truncation=True, padding='max_length', return_tensors='pt').input_ids
-            model_inputs["labels"] = labels
-        
-        return model_inputs
-
-    else:
-
-        if dataset in ["sst2", "cola"]:
+    if 'label' in examples:
+        # Convert the labels to strings and then to sequences of token IDs
+        labels = [str(label) for label in examples["label"]]
+        labels = tokenizer(labels, max_length=128, truncation=True, padding='max_length', return_tensors='pt').input_ids
+        model_inputs["labels"] = labels
     
-            return tokenizer(examples['sentence'], padding="max_length", truncation=True,return_tensors="pt")
+    return model_inputs
 
-        elif dataset == "mnli":
-            return tokenizer(examples["premise"], examples["hypothesis"], padding="max_length", truncation=True,return_tensors="pt")
-        elif dataset == "qqp":
-            return tokenizer(examples["question1"], examples["question2"], padding="max_length", truncation=True,return_tensors="pt")
-        elif dataset == "qnli":
-            return tokenizer(examples["question"], examples["sentence"], padding="max_length", truncation=True,return_tensors="pt")
-
-        elif dataset in ["mrpc", "stsb", "rte"]:
-            return tokenizer(examples["sentence1"], examples["sentence2"], padding="max_length", truncation=True,return_tensors="pt")
-
-# def tokenize_function(examples, tokenizer, dataset):
-#     if dataset in ["sst2", "cola"]:
-#         tokenized_examples = tokenizer(["classify sentiment: " + sentence for sentence in examples['sentence']], padding="max_length", truncation=True)
-#     elif dataset == "mnli":
-#         tokenized_examples = tokenizer(["natural language inference: " + premise + " [SEP] " + hypothesis for premise, hypothesis in zip(examples["premise"], examples["hypothesis"])], padding="max_length", truncation=True)
-#     elif dataset == "qqp":
-#         tokenized_examples = tokenizer(["question pair classification: " + question1 + " [SEP] " + question2 for question1, question2 in zip(examples["question1"], examples["question2"])], padding="max_length", truncation=True)
-#     elif dataset == "qnli":
-#         tokenized_examples = tokenizer(["question answering: " + question + " [SEP] " + sentence for question, sentence in zip(examples["question"], examples["sentence"])], padding="max_length", truncation=True)
-#     elif dataset in ["mrpc", "stsb", "rte"]:
-#         tokenized_examples = tokenizer(["sentence pair classification: " + sentence1 + " [SEP] " + sentence2 for sentence1, sentence2 in zip(examples["sentence1"], examples["sentence2"])], padding="max_length", truncation=True)
-    
-#     # Ensure that the input to the model is a 2D tensor
-#     for key in tokenized_examples.keys():
-#         tokenized_examples[key] = [val if isinstance(val, list) else [val] for val in tokenized_examples[key]]
-
-#     return tokenized_examples
 
 def evaluate(args, global_model, test_dataset, tokenizer):
-    tokenized_test_dataset = test_dataset.map(lambda examples: tokenize_function(examples, tokenizer, args.dataset, args.model), batched=True)
+    tokenized_test_dataset = test_dataset.map(lambda examples: tokenize_function(examples, tokenizer, args.dataset), batched=True)
 
     training_args = TrainingArguments(
        args.log_dir,
@@ -131,7 +79,7 @@ def evaluate(args, global_model, test_dataset, tokenizer):
     global_model.to("cpu")  # Move the global model back to CPU memory after evaluation
 
     if args.dataset == "stsb":
-        pearson_corr = compute_metrics((predictions.predictions, true_labels), args.dataset,args.model)["pearson_corr"]
+        pearson_corr = compute_metrics((predictions.predictions, true_labels), args.dataset)["pearson_corr"]
         print(f"Pearson correlation: {pearson_corr}")
         logging.info(f"Pearson correlation: {pearson_corr}")
     else:
@@ -143,8 +91,8 @@ def evaluate(args, global_model, test_dataset, tokenizer):
 def centralized_few_shot_learning(args, global_model, train_dataset, test_dataset, tokenizer):
     # global_model = DistilBertForSequenceClassification.from_pretrained(model_name, num_labels=2)
     global_model = global_model.cpu()
-    tokenized_train_dataset = train_dataset.map(lambda examples: tokenize_function(examples, tokenizer, args.dataset, args.model), batched=True)
-    tokenized_test_dataset = test_dataset.map(lambda examples: tokenize_function(examples, tokenizer, args.dataset, args.model), batched=True)
+    tokenized_train_dataset = train_dataset.map(lambda examples: tokenize_function(examples, tokenizer, args.dataset), batched=True)
+    tokenized_test_dataset = test_dataset.map(lambda examples: tokenize_function(examples, tokenizer, args.dataset), batched=True)
     logging.info("=====> train_dataset size: {}".format(len(tokenized_train_dataset)))
     print("=====> train_dataset size: {}".format(len(tokenized_train_dataset)))
     training_args = TrainingArguments(
@@ -179,7 +127,7 @@ def centralized_few_shot_learning(args, global_model, train_dataset, test_datase
         args=training_args,
         train_dataset=tokenized_train_dataset,
         eval_dataset=tokenized_test_dataset,  # Pass tokenized_test_dataset instead of test_dataset
-        compute_metrics=lambda eval_pred: compute_metrics(eval_pred, args.dataset,args.model),
+        compute_metrics=lambda eval_pred: compute_metrics(eval_pred, args.dataset),
     )
 
 
@@ -201,7 +149,7 @@ def federated_learning(args, global_model, train_datasets, test_dataset, tokeniz
 
             local_model = copy.deepcopy(global_model)
 
-            tokenized_client_dataset = client_dataset.map(lambda examples: tokenize_function(examples, tokenizer, args.dataset, args.model), batched=True)
+            tokenized_client_dataset = client_dataset.map(lambda examples: tokenize_function(examples, tokenizer, args.dataset), batched=True)
 
             logdir = os.path.join(args.log_dir, f"client_{client_id}")
 
@@ -260,7 +208,7 @@ def federated_foundation(args, global_model,train_datasets, test_dataset, tokeni
             # local_model = DistilBertForSequenceClassification.from_pretrained(model_name, num_labels=2)
             # local_model.load_state_dict(global_model.state_dict())
             # local_model = torch.compile(local_model)
-            tokenized_client_dataset = client_dataset.map(lambda examples: tokenize_function(examples, tokenizer, args.dataset,args.model), batched=True)
+            tokenized_client_dataset = client_dataset.map(lambda examples: tokenize_function(examples, tokenizer, args.dataset), batched=True)
 
             logdir = os.path.join(args.log_dir, f"client_{client_id}")
 
