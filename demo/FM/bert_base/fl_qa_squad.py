@@ -307,7 +307,7 @@ def main(args):
 
     
     
-    global_model = federated_learning(args, global_model,local_datasets, val_dataset, datasets,tokenizer)
+    global_model = federated_learning(args, global_model,local_datasets, datasets,tokenizer)
 
 
     print(dash_line+"\nFinal evaluation")
