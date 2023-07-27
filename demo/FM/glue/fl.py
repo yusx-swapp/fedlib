@@ -1,7 +1,7 @@
 import torch
 import argparse
 from transformers import DistilBertForSequenceClassification, DistilBertTokenizerFast, Trainer, TrainingArguments
-from transformers import RobertaTokenizerFast, T5Tokenizer
+from transformers import RobertaTokenizerFast, T5Tokenizer, AutoTokenizer
 from transformers import DistilBertForSequenceClassification, RobertaForSequenceClassification, T5ForConditionalGeneration
 from datasets import load_dataset, concatenate_datasets
 import logging
@@ -71,18 +71,19 @@ def federated_learning(args, global_model, train_datasets, test_dataset, tokeniz
 def main(args):
     if args.model == "distilbert":
         model_name = "distilbert-base-uncased"
-    elif args.model == "roberta":
-        model_name = "roberta-base"
-    elif args.model == "t5":
-        model_name = "t5-small"  # You can also use "t5-base" or other T5 variants
-    
-
-    if args.model == "distilbert":
         tokenizer = DistilBertTokenizerFast.from_pretrained(model_name)
     elif args.model == "roberta":
+        model_name = "roberta-base"
         tokenizer = RobertaTokenizerFast.from_pretrained(model_name)
     elif args.model == "t5":
+        model_name = "t5-small"  # You can also use "t5-base" or other T5 variants
         tokenizer = T5Tokenizer.from_pretrained(model_name)
+
+    elif args.model == "bert-base":
+        model_name = 'bert-base-uncased'
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+
+
     
     num_classes = {
     "mnli": 3,
@@ -177,40 +178,3 @@ if __name__ == "__main__":
     )
 
     main(args)
-
-
-#python ffm.py --method centralized --model t5 --dataset sst2 --k_shot 4 --num_epochs 60 --log_dir t5_centralized/16 >  t5/sst2_16.txt
-
-#python ffm.py --method centralized --model roberta --dataset sst2 --k_shot 16 --num_epochs 60 --log_dir roberta_centralized/4 >  roberta/sst2_16.txt
-#python ffm.py --method federated --model roberta --dataset sst2 --k_shot 16 --num_local_epochs 30 --num_epochs=30  --num_rounds 3 --log_dir roberta_federated/4 >  roberta/sst2_federated_16.txt
-#python ffm.py --method federated_foundation --model roberta --dataset sst2 --k_shot 16 --num_local_epochs 30 --num_epochs=30 --num_rounds 3 --log_dir roberta_federated_foundation/4 >  roberta/sst2_federated_foundation_16.txt
-
-#python ffm.py --method centralized --model roberta --dataset mrpc --k_shot 16 --num_epochs 60 --log_dir roberta_centralized/16 >  roberta/mrpc_16.txt
-#python ffm.py --method federated --model roberta --dataset mrpc --k_shot 16 --num_local_epochs 30 --num_epochs=30  --num_rounds 3 --log_dir roberta_federated/16 >  roberta/mrpc_federated_16.txt
-#python ffm.py --method federated_foundation --model roberta --dataset mrpc --k_shot 16 --num_local_epochs 30 --num_epochs=30 --num_rounds 3 --log_dir roberta_federated_foundation/16 >  roberta/mrpc_federated_foundation_16.txt
-
-#python ffm.py --method centralized --model roberta --dataset mnli --k_shot 16 --num_epochs 60 --log_dir roberta_centralized/16 >  roberta/mnli_16.txt
-#python ffm.py --method federated --model roberta --dataset mnli --k_shot 16 --num_local_epochs 30 --num_epochs=30  --num_rounds 3 --log_dir roberta_federated/16 >  roberta/mnli_federated_16.txt
-#python ffm.py --method federated_foundation --model roberta --dataset mnli --k_shot 16 --num_local_epochs 30 --num_epochs=30 --num_rounds 3 --log_dir roberta_federated_foundation/16 >  roberta/mnli_federated_foundation_16.txt
-
-#python ffm.py --method centralized --model roberta --dataset qqp --k_shot 16 --num_epochs 60 --log_dir roberta_centralized/16 >  roberta/qqp_16.txt
-#python ffm.py --method federated --model roberta --dataset qqp --k_shot 16 --num_local_epochs 30 --num_epochs=30  --num_rounds 3 --log_dir roberta_federated/16 >  roberta/qqp_federated_16.txt
-#python ffm.py --method federated_foundation --model roberta --dataset qqp --k_shot 16 --num_local_epochs 30 --num_epochs=30 --num_rounds 3 --log_dir roberta_federated_foundation/16 >  roberta/qqp_federated_foundation_16.txt
-
-#python ffm.py --method centralized --model roberta --dataset qnli --k_shot 16 --num_epochs 60 --log_dir roberta_centralized/16 >  roberta/qnli_16.txt
-#python ffm.py --method federated --model roberta --dataset qnli --k_shot 16 --num_local_epochs 30 --num_epochs=30  --num_rounds 3 --log_dir roberta_federated/16 >  roberta/qnli_federated_16.txt
-#python ffm.py --method federated_foundation --model roberta --dataset qnli --k_shot 16 --num_local_epochs 30 --num_epochs=30 --num_rounds 3 --log_dir roberta_federated_foundation/16 >  roberta/qnli_federated_foundation_16.txt
-
-
-#python ffm.py --method centralized --model roberta --dataset stsb --k_shot 16 --num_epochs 60 --log_dir roberta_centralized/16 >  roberta/stsb_16.txt
-#python ffm.py --method federated --model roberta --dataset stsb --k_shot 16 --num_local_epochs 30 --num_epochs=30  --num_rounds 3 --log_dir roberta_federated/16 >  roberta/stsb_federated_16.txt
-#python ffm.py --method federated_foundation --model roberta --dataset stsb --k_shot 16 --num_local_epochs 30 --num_epochs=30 --num_rounds 3 --log_dir roberta_federated_foundation/16 >  roberta/stsb_federated_foundation_16.txt
-
-#python ffm.py --method centralized --model roberta --dataset rte --k_shot 16 --num_epochs 60 --log_dir roberta_centralized/16 >  roberta/rte_16.txt
-#python ffm.py --method federated --model roberta --dataset rte --k_shot 16 --num_local_epochs 30 --num_epochs=30  --num_rounds 3 --log_dir roberta_federated/16 >  roberta/rte_federated_16.txt
-#python ffm.py --method federated_foundation --model roberta --dataset rte --k_shot 16 --num_local_epochs 30 --num_epochs=30 --num_rounds 3 --log_dir roberta_federated_foundation/16 >  roberta/rte_federated_foundation_16.txt
-
-#python ffm.py --method centralized --model roberta --dataset cola --k_shot 16 --num_epochs 60 --log_dir roberta_centralized/16 >  roberta/cola_16.txt
-#python ffm.py --method federated --model roberta --dataset cola --k_shot 16 --num_local_epochs 30 --num_epochs=30  --num_rounds 3 --log_dir roberta_federated/16 >  roberta/cola_federated_16.txt
-
-#python ffm.py --method federated_foundation --model roberta --dataset cola --k_shot 16 --num_local_epochs 30 --num_epochs=30 --num_rounds 3 --log_dir roberta_federated_foundation/16 >  roberta/cola_federated_foundation_16.txt
