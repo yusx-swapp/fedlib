@@ -1,8 +1,8 @@
 from torch.utils.data import Subset
 import numpy as np
 import random
-from datasets import concatenate_datasets
-
+from datasets import concatenate_datasets,Dataset
+import pandas as pd
 class DatasetSplitter:
     def __init__(self, dataset, seed=None):
         self.dataset = dataset
@@ -20,7 +20,8 @@ class DatasetSplitter:
         sub_datasets = []
         for _ in range(n):
             indices = random.choices(range(len(self.dataset)), k=size)
-            sub_dataset = [self.dataset[i] for i in indices]
+            # sub_dataset = [self.dataset[i] for i in indices]
+            sub_dataset = concatenate_datasets(self.dataset[i] for i in indices)
             sub_datasets.append(sub_dataset)
         return sub_datasets
 
@@ -29,11 +30,24 @@ class DatasetSplitter:
         random.shuffle(indices)
         size = len(indices) // n
         sub_datasets = [indices[i*size:(i+1)*size] for i in range(n)]
+        sub_datasets[-1].extend(indices[n*size:])
+
+        # extract huggingface dataset get a sub dataset by index
+        # index = [indices[i*size:(i+1)*size] for i in range(n)]
+        
+
+
+
         # convert indices to actual dataset elements
-        sub_datasets = [[self.dataset[i] for i in sub_dataset] for sub_dataset in sub_datasets]
+        # sub_datasets = [[self.dataset[i] for i in sub_dataset] for sub_dataset in sub_datasets]
+        print(type(self.dataset))
+        sub_datasets = [Dataset.from_dict(self.dataset[sub_dataset]) for sub_dataset in sub_datasets]
+        print(type(sub_datasets[0]))
         # add remaining elements to the last sub-dataset
-        if len(indices) % n != 0:
-            sub_datasets[-1].extend(self.dataset[i] for i in indices[n*size:])
+        # if len(indices) % n != 0:
+        #     sub_datasets[-1] = concatenate_datasets(sub_datasets[-1], self.dataset[indices[n*size:]])
+        
+
         return sub_datasets
 
 

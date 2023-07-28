@@ -19,6 +19,10 @@ import evaluate
 
 random_seed = 123
 
+def step_lr(initial_lr, epoch, decay_step, decay_rate):
+    return initial_lr * (decay_rate ** (epoch // decay_step))
+
+
 def compute_metrics(start_logits, end_logits, features, examples):
     n_best = 20
     max_answer_length = 30
@@ -171,7 +175,8 @@ def federated_learning(args, global_model, train_datasets, raw_datasets,tokenize
     tokenized_client_datasets = []
     for client_dataset in train_datasets:
         tokenized_client_dataset = client_dataset.map(lambda examples: tokenize_function(examples, tokenizer), batched=True)
-        
+        # tokenized_client_dataset = [tokenize_function(example,tokenizer) for example in client_dataset[client_id]]
+
         tokenized_client_dataset = tokenized_client_dataset.map(
             lambda examples: prepare_train_features(examples, tokenizer),
             batched=True,
@@ -181,13 +186,15 @@ def federated_learning(args, global_model, train_datasets, raw_datasets,tokenize
         tokenized_client_datasets.append(tokenized_client_dataset)
 
     validation_dataset = raw_datasets["validation"].map(
-        preprocess_validation_examples,
+        lambda examples: preprocess_validation_examples(examples, tokenizer),
         batched=True,
         remove_columns=raw_datasets["validation"].column_names,
     )
     for communication_round in range(args.num_rounds):
-        local_models = []
 
+        lr = step_lr(args.learning_rate, communication_round, 5, 0.98)
+        local_models = []
+        global_model.to('cpu')
         #randomly select 10% client index for training
         client_indices = np.random.choice(len(tokenized_client_datasets), size=int(0.1*len(tokenized_client_datasets)), replace=False)
 
@@ -208,7 +215,7 @@ def federated_learning(args, global_model, train_datasets, raw_datasets,tokenize
                 # logging_strategy="epoch",
                 evaluation_strategy="no",
                 save_strategy = "no",
-                learning_rate=args.learning_rate,
+                learning_rate=lr,
                 per_device_train_batch_size=args.per_device_train_batch_size,
                 per_device_eval_batch_size=args.per_device_eval_batch_size,
                 num_train_epochs=args.num_local_epochs,
@@ -224,11 +231,15 @@ def federated_learning(args, global_model, train_datasets, raw_datasets,tokenize
             trainer.train()
 
 
-            predictions, _, _ = trainer.predict(validation_dataset)
-            start_logits, end_logits = predictions   
-            res = compute_metrics(start_logits, end_logits, validation_dataset, raw_datasets["validation"])
-            print("local model training finished, validation results: ", res)
-
+            # predictions, _, _ = trainer.predict(validation_dataset)
+            # start_logits, end_logits = predictions   
+            # res = compute_metrics(start_logits, end_logits, validation_dataset, raw_datasets["validation"])
+            # print("local model training finished, validation results: ", res)
+            # #extract value from dict res
+            # res = list(res.values())
+            # logging.info(f"local model training finished, validation results: {res}")
+            print("local model training finished")
+            logging.info(f"local model training finished")
             local_model.to("cpu")  # Move the local model to CPU memory
             local_models.append(local_model)
 
@@ -242,7 +253,7 @@ def federated_learning(args, global_model, train_datasets, raw_datasets,tokenize
         
         print(f"Evaluating global model after communication round {communication_round}")
         logging.info(f"Evaluating global model after communication round {communication_round}")
-
+        
         eval_trainer = Trainer(
             model=global_model,
             args=training_args,
@@ -252,7 +263,8 @@ def federated_learning(args, global_model, train_datasets, raw_datasets,tokenize
         start_logits, end_logits = predictions   
         res = compute_metrics(start_logits, end_logits, validation_dataset, raw_datasets["validation"])
         print("Global validation results: ", res)
-
+        res = list(res.values())
+        logging.info(f"Global validation results: {res}")
     return global_model
 
 
@@ -286,7 +298,7 @@ def main(args):
 
 
     train_dataset = datasets["train"]
-    val_dataset = datasets["validation"]
+    # val_dataset = datasets["validation"]
 
 
 
@@ -303,7 +315,7 @@ def main(args):
         splitter = DatasetSplitter(train_dataset, seed=random_seed)
 
         local_datasets = splitter.split(n=args.num_clients, replacement=False)
-
+    
 
     
     
@@ -326,8 +338,8 @@ if __name__ == "__main__":
     parser.add_argument("--num_epochs", type=int, default=50)
     parser.add_argument("--num_local_epochs", type=int, default=30)
     parser.add_argument("--dataset", type=str, default="squad", help="Choose between 'sst2', 'mrpc', 'mnli', 'qqp', 'qnli', 'stsb', 'rte', 'cola' datasets")
-    parser.add_argument("--per_device_train_batch_size", type=int, default=20)
-    parser.add_argument("--per_device_eval_batch_size", type=int, default=20)
+    parser.add_argument("--per_device_train_batch_size", type=int, default=44)
+    parser.add_argument("--per_device_eval_batch_size", type=int, default=44)
     parser.add_argument("--log_dir", type=str, default="centralized/4")
     parser.add_argument("--learning_rate", type=float, default=2e-5)
     parser.add_argument("--model", type=str, default="bert-base", choices=["bert-base","distilbert", "roberta", "t5"], help="Choose between 'distilbert', 'roberta', and 't5' models")
@@ -346,4 +358,4 @@ if __name__ == "__main__":
 
     main(args)
 
-#python fl_qa_squad.py --split_data --num_clients 100 --num_rounds 5 --num_local_epochs 3 --dataset squad --log_dir suqad/100 --model bert-base
+#python fl_qa_squad.py --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset squad --log_dir suqad/100 --model bert-base
