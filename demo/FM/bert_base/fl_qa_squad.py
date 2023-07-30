@@ -1,9 +1,15 @@
 import torch
 import argparse
-from transformers import DistilBertForSequenceClassification, DistilBertTokenizerFast, Trainer, TrainingArguments
-from transformers import RobertaTokenizerFast, T5Tokenizer, AutoTokenizer
-from transformers import DistilBertForSequenceClassification, RobertaForSequenceClassification, T5ForConditionalGeneration
-from datasets import load_dataset, concatenate_datasets
+from transformers import (
+    DistilBertTokenizerFast,
+    Trainer,
+    TrainingArguments,
+    RobertaTokenizerFast, 
+    T5Tokenizer, 
+    AutoTokenizer, 
+    RobertaForQuestionAnswering,
+    )
+from datasets import load_dataset
 import logging
 import sys
 import copy
@@ -16,6 +22,7 @@ from tqdm.auto import tqdm
 import numpy as np
 from transformers import BertForQuestionAnswering, DistilBertForQuestionAnswering
 import evaluate
+import time
 
 random_seed = 123
 
@@ -196,6 +203,7 @@ def federated_learning(args, global_model, train_datasets, raw_datasets,tokenize
         local_models = []
         global_model.to('cpu')
         #randomly select 10% client index for training
+        np.random.seed(int(time.time()))  # Set the seed to the current time
         client_indices = np.random.choice(len(tokenized_client_datasets), size=int(0.1*len(tokenized_client_datasets)), replace=False)
 
         # for client_id, tokenized_client_dataset in enumerate(tokenized_client_datasets):
@@ -274,10 +282,10 @@ def main(args):
         tokenizer = DistilBertTokenizerFast.from_pretrained(model_name)
         global_model = DistilBertForQuestionAnswering.from_pretrained(model_name)
     elif args.model == "roberta":
-        raise NotImplementedError
+        # raise NotImplementedError
         model_name = "roberta-base"
         tokenizer = RobertaTokenizerFast.from_pretrained(model_name)
-        
+        global_model = RobertaForQuestionAnswering.from_pretrained(model_name)
     elif args.model == "t5":
         raise NotImplementedError
         model_name = "t5-small"  # You can also use "t5-base" or other T5 variants
@@ -287,11 +295,18 @@ def main(args):
         model_name = 'bert-base-uncased'
         tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
         global_model = BertForQuestionAnswering.from_pretrained(model_name)
-
+    elif args.model == "bert-large":
+        model_name = 'bert-large-uncased-whole-word-masking'
+        tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
+        global_model = BertForQuestionAnswering.from_pretrained(model_name)
 
     
     if args.dataset == "squad":
         datasets = load_dataset('squad')
+
+    elif args.dataset == "squad_v2":
+        datasets = load_dataset('squad_v2')
+    
     else:
         raise NotImplementedError
 
@@ -337,12 +352,12 @@ if __name__ == "__main__":
     parser.add_argument("--num_rounds", type=int, default=5)
     parser.add_argument("--num_epochs", type=int, default=50)
     parser.add_argument("--num_local_epochs", type=int, default=30)
-    parser.add_argument("--dataset", type=str, default="squad", help="Choose between 'sst2', 'mrpc', 'mnli', 'qqp', 'qnli', 'stsb', 'rte', 'cola' datasets")
+    parser.add_argument("--dataset", type=str, default="squad", choices=["squad", "squad_v2"], help="Choose between 'squad' and 'squad_v2' datasets")
     parser.add_argument("--per_device_train_batch_size", type=int, default=44)
     parser.add_argument("--per_device_eval_batch_size", type=int, default=44)
     parser.add_argument("--log_dir", type=str, default="centralized/4")
     parser.add_argument("--learning_rate", type=float, default=2e-5)
-    parser.add_argument("--model", type=str, default="bert-base", choices=["bert-base","distilbert", "roberta", "t5"], help="Choose between 'distilbert', 'roberta', and 't5' models")
+    parser.add_argument("--model", type=str, default="bert-base", choices=["distilbert", "roberta", "t5", "bert-base", "bert-large"], help="Choose between 'distilbert', 'roberta', 't5', 'bert-base', 'bert-large'")
     args = parser.parse_args()
     
     os.makedirs(args.log_dir, exist_ok=True)
