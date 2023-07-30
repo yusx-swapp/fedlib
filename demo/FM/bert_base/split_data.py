@@ -20,8 +20,7 @@ class DatasetSplitter:
         sub_datasets = []
         for _ in range(n):
             indices = random.choices(range(len(self.dataset)), k=size)
-            # sub_dataset = [self.dataset[i] for i in indices]
-            sub_dataset = concatenate_datasets(self.dataset[i] for i in indices)
+            sub_dataset = Dataset.from_dict(self.dataset[indices])
             sub_datasets.append(sub_dataset)
         return sub_datasets
 
@@ -32,7 +31,6 @@ class DatasetSplitter:
         sub_datasets = [indices[i*size:(i+1)*size] for i in range(n)]
         sub_datasets[-1].extend(indices[n*size:])
         sub_datasets = [Dataset.from_dict(self.dataset[sub_dataset]) for sub_dataset in sub_datasets]
-        print(type(sub_datasets[0]))
 
         return sub_datasets
 
