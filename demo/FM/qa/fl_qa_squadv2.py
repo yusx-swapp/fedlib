@@ -29,7 +29,36 @@ random_seed = 123
 def step_lr(initial_lr, epoch, decay_step, decay_rate):
     return initial_lr * (decay_rate ** (epoch // decay_step))
 
+def compute_metrics1(p):
+    predictions = p.predictions
+    label_ids = p.label_ids
+    example_id = p.example_id
 
+    # Convert predictions and labels from token level to character level
+    final_predictions = []
+    final_labels = []
+    for pred, labels, id in zip(predictions, label_ids, example_id):
+        start, end = pred.argmax(axis=-1)
+        score = pred[start:end+1].max()
+        offset_mapping = label_ids[id]['offset_mapping']
+        start_char = offset_mapping[start][0]
+        end_char = offset_mapping[end][1]
+
+        # Convert the start and end positions to span of text in the original context
+        prediction = examples["context"][id][start_char:end_char]
+        final_predictions.append({'id': id, 'prediction_text': prediction})
+
+        # Also convert labels
+        answer = examples['answers'][id]
+        final_labels.append({'id': id, 'answers': answer})
+
+    # Compute the metrics: F1 and exact match
+    results = squad_metric.compute(predictions=final_predictions, references=final_labels)
+    
+    return {
+        "f1": results["f1"],
+        "exact_match": results["exact_match"],
+    }
 def compute_metrics(start_logits, end_logits, features, examples):
     n_best = 20
     max_answer_length = 30
@@ -86,155 +115,118 @@ def tokenize_function(examples,tokenizer):
     return tokenizer(examples['question'], examples['context'], truncation=True)
 
 def prepare_train_features(examples,tokenizer):
-    max_length = 384
-    stride = 128
-    questions = [q.strip() for q in examples["question"]]
-    inputs = tokenizer(
-        questions,
+    # Tokenize our examples with truncation and padding, but keep the overflows using a stride. This results
+    # in one example possible giving several features when a context is long, each of those features having a
+    # context that overlaps a bit the context of the previous feature.
+    tokenized_examples = tokenizer(
+        examples["question"],
         examples["context"],
-        max_length=max_length,
         truncation="only_second",
-        stride=stride,
+        max_length=384,
+        stride=128,
         return_overflowing_tokens=True,
         return_offsets_mapping=True,
         padding="max_length",
     )
 
-    offset_mapping = inputs.pop("offset_mapping")
-    sample_map = inputs.pop("overflow_to_sample_mapping")
-    answers = examples["answers"]
-    start_positions = []
-    end_positions = []
+    # Since one example might give us several features if it has a long context, we need a map from a feature to
+    # its corresponding example. This key gives us just that.
+    sample_mapping = tokenized_examples.pop("overflow_to_sample_mapping")
+    # The offset mappings will give us a map from token to character position in the original context. This will
+    # help us compute the start_positions and end_positions.
+    offset_mapping = tokenized_examples.pop("offset_mapping")
 
-    for i, offset in enumerate(offset_mapping):
-        sample_idx = sample_map[i]
-        answer = answers[sample_idx]
-        start_char = answer["answer_start"][0]
-        end_char = answer["answer_start"][0] + len(answer["text"][0])
-        sequence_ids = inputs.sequence_ids(i)
+    # Let's label those examples!
+    tokenized_examples["start_positions"] = []
+    tokenized_examples["end_positions"] = []
 
-        # Find the start and end of the context
-        idx = 0
-        while sequence_ids[idx] != 1:
-            idx += 1
-        context_start = idx
-        while sequence_ids[idx] == 1:
-            idx += 1
-        context_end = idx - 1
+    for i, offsets in enumerate(offset_mapping):
+        # We will label impossible answers with the index of the CLS token.
+        input_ids = tokenized_examples["input_ids"][i]
+        cls_index = input_ids.index(tokenizer.cls_token_id)
 
-        # If the answer is not fully inside the context, label is (0, 0)
-        if offset[context_start][0] > start_char or offset[context_end][1] < end_char:
-            start_positions.append(0)
-            end_positions.append(0)
+        # Grab the sequence corresponding to that example (to know what is the context and what is the question).
+        sequence_ids = tokenized_examples.sequence_ids(i)
+
+        # One example can give several spans, this is the index of the example containing this span of text.
+        sample_index = sample_mapping[i]
+        answers = examples["answers"][sample_index]
+        # If no answers are given, set the cls_index as answer.
+        if len(answers["answer_start"]) == 0:
+            tokenized_examples["start_positions"].append(cls_index)
+            tokenized_examples["end_positions"].append(cls_index)
         else:
-            # Otherwise it's the start and end token positions
-            idx = context_start
-            while idx <= context_end and offset[idx][0] <= start_char:
-                idx += 1
-            start_positions.append(idx - 1)
+            # Start/end character index of the answer in the text.
+            start_char = answers["answer_start"][0]
+            end_char = start_char + len(answers["text"][0])
 
-            idx = context_end
-            while idx >= context_start and offset[idx][1] >= end_char:
-                idx -= 1
-            end_positions.append(idx + 1)
+            # Start token index of the current span in the text.
+            token_start_index = 0
+            while sequence_ids[token_start_index] != 1:
+                token_start_index += 1
 
-    inputs["start_positions"] = start_positions
-    inputs["end_positions"] = end_positions
-    return inputs
+            # End token index of the current span in the text.
+            token_end_index = len(input_ids) - 1
+            while sequence_ids[token_end_index] != 1:
+                token_end_index -= 1
+
+            # Detect if the answer is out of the span (in which case this feature is labeled with the CLS index).
+            if not (offsets[token_start_index][0] <= start_char and offsets[token_end_index][1] >= end_char):
+                tokenized_examples["start_positions"].append(cls_index)
+                tokenized_examples["end_positions"].append(cls_index)
+            else:
+                # Otherwise move the token_start_index and token_end_index to the two ends of the answer.
+                # Note: we could go after the last offset if the answer is the last word (edge case).
+                while token_start_index < len(offsets) and offsets[token_start_index][0] <= start_char:
+                    token_start_index += 1
+                tokenized_examples["start_positions"].append(token_start_index - 1)
+                while offsets[token_end_index][1] >= end_char:
+                    token_end_index -= 1
+                tokenized_examples["end_positions"].append(token_end_index + 1)
+
+    return tokenized_examples
 
 
 def preprocess_validation_examples(examples,tokenizer):
-    max_length = 384
-    stride = 128
-    questions = [q.strip() for q in examples["question"]]
-    inputs = tokenizer(
-        questions,
+    # Tokenize our examples with truncation and maybe padding, but keep the overflows using a stride. This results
+    # in one example possible giving several features when a context is long, each of those features having a
+    # context that overlaps a bit the context of the previous feature.
+    tokenized_examples = tokenizer(
+        examples["question"],
         examples["context"],
-        max_length=max_length,
         truncation="only_second",
-        stride=stride,
+        max_length=384,
+        stride=128,
         return_overflowing_tokens=True,
         return_offsets_mapping=True,
         padding="max_length",
     )
 
-    sample_map = inputs.pop("overflow_to_sample_mapping")
-    example_ids = []
+    # Since one example might give us several features if it has a long context, we need a map from a feature to
+    # its corresponding example. This key gives us just that.
+    sample_mapping = tokenized_examples.pop("overflow_to_sample_mapping")
 
-    for i in range(len(inputs["input_ids"])):
-        sample_idx = sample_map[i]
-        example_ids.append(examples["id"][sample_idx])
+    # We keep the example_id that gave us this feature and we will store the offset mappings.
+    tokenized_examples["example_id"] = []
 
-        sequence_ids = inputs.sequence_ids(i)
-        offset = inputs["offset_mapping"][i]
-        inputs["offset_mapping"][i] = [
-            o if sequence_ids[k] == 1 else None for k, o in enumerate(offset)
+    for i in range(len(tokenized_examples["input_ids"])):
+        # Grab the sequence corresponding to that example (to know what is the context and what is the question).
+        sequence_ids = tokenized_examples.sequence_ids(i)
+        context_index = 1
+
+        # One example can give several spans, this is the index of the example containing this span of text.
+        sample_index = sample_mapping[i]
+        tokenized_examples["example_id"].append(examples["id"][sample_index])
+
+        # Set to None the offset_mapping that are not part of the context so it's easy to determine if a token
+        # position is part of the context or not.
+        tokenized_examples["offset_mapping"][i] = [
+            (o if sequence_ids[k] == context_index else None)
+            for k, o in enumerate(tokenized_examples["offset_mapping"][i])
         ]
 
-    inputs["example_id"] = example_ids
-    return inputs
+    return tokenized_examples
 
-
-def prepare_train_features_squad_v2(examples,tokenizer):
-    max_length = 384
-    stride = 128
-    questions = [q.strip() for q in examples["question"]]
-    inputs = tokenizer(
-        questions,
-        examples["context"],
-        max_length=max_length,
-        truncation="only_second",
-        stride=stride,
-        return_overflowing_tokens=True,
-        return_offsets_mapping=True,
-        padding="max_length",
-    )
-
-    offset_mapping = inputs.pop("offset_mapping")
-    sample_map = inputs.pop("overflow_to_sample_mapping")
-    answers = examples["answers"]
-    start_positions = []
-    end_positions = []
-    is_impossible = []
-
-    for i, offset in enumerate(offset_mapping):
-        sample_idx = sample_map[i]
-        answer = answers[sample_idx]
-        start_char = answer["answer_start"][0]
-        end_char = answer["answer_start"][0] + len(answer["text"][0])
-        sequence_ids = inputs.sequence_ids(i)
-
-        # Find the start and end of the context
-        idx = 0
-        while sequence_ids[idx] != 1:
-            idx += 1
-        context_start = idx
-        while sequence_ids[idx] == 1:
-            idx += 1
-        context_end = idx - 1
-
-        # If the answer is not fully inside the context, label is (0, 0)
-        if offset[context_start][0] > start_char or offset[context_end][1] < end_char:
-            start_positions.append(0)
-            end_positions.append(0)
-            is_impossible.append(1)
-        else:
-            # Otherwise it's the start and end token positions
-            idx = context_start
-            while idx <= context_end and offset[idx][0] <= start_char:
-                idx += 1
-            start_positions.append(idx - 1)
-
-            idx = context_end
-            while idx >= context_start and offset[idx][1] >= end_char:
-                idx -= 1
-            end_positions.append(idx + 1)
-            is_impossible.append(0)
-
-    inputs["start_positions"] = start_positions
-    inputs["end_positions"] = end_positions
-    inputs["is_impossible"] = is_impossible
-    return inputs
 
 def federated_learning(args, global_model, train_datasets, raw_datasets,tokenizer):
     # global_model = DistilBertForSequenceClassification.from_pretrained(model_name, num_labels=2)
@@ -264,7 +256,7 @@ def federated_learning(args, global_model, train_datasets, raw_datasets,tokenize
         global_model.to('cpu')
         #randomly select 10% client index for training
         np.random.seed(int(time.time()))  # Set the seed to the current time
-        client_indices = np.random.choice(len(tokenized_client_datasets), size=int(0.1*len(tokenized_client_datasets)), replace=False)
+        client_indices = np.random.choice(len(tokenized_client_datasets), size=int(0.05*len(tokenized_client_datasets)), replace=False)
 
         # for client_id, tokenized_client_dataset in enumerate(tokenized_client_datasets):
         for client_id in client_indices:
@@ -326,6 +318,7 @@ def federated_learning(args, global_model, train_datasets, raw_datasets,tokenize
             model=global_model,
             args=training_args,
             train_dataset=tokenized_client_dataset,
+            compute_metrics=compute_metrics1,
         )
         predictions, _, _ = eval_trainer.predict(validation_dataset)
         start_logits, end_logits = predictions   
@@ -361,14 +354,9 @@ def main(args):
         global_model = BertForQuestionAnswering.from_pretrained(model_name)
 
     
-    if args.dataset == "squad":
-        datasets = load_dataset('squad')
 
-    elif args.dataset == "squad_v2":
-        datasets = load_dataset('squad_v2')
+    datasets = load_dataset('squad_v2')
     
-    else:
-        raise NotImplementedError
 
 
 
@@ -435,4 +423,4 @@ if __name__ == "__main__":
 
 #python fl_qa_squad.py --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset squad --log_dir suqad/100 --model bert-base
 
-# sbatch --gres=gpu:1 --wrap="python3 fl_qa_squad.py --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset squad_v2 --log_dir suqad/100 --model bert-base > squad/100/console.log"
+# sbatch --gres=gpu:1 --wrap="python3 fl_qa_squadv2.py --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset squad_v2 --log_dir suqadv2/100 --model bert-base --per_device_train_batch_size 16 --per_device_eval_batch_size 16"
