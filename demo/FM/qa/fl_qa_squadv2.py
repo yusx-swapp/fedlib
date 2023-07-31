@@ -29,36 +29,7 @@ random_seed = 123
 def step_lr(initial_lr, epoch, decay_step, decay_rate):
     return initial_lr * (decay_rate ** (epoch // decay_step))
 
-def compute_metrics1(p):
-    predictions = p.predictions
-    label_ids = p.label_ids
-    example_id = p.example_id
 
-    # Convert predictions and labels from token level to character level
-    final_predictions = []
-    final_labels = []
-    for pred, labels, id in zip(predictions, label_ids, example_id):
-        start, end = pred.argmax(axis=-1)
-        score = pred[start:end+1].max()
-        offset_mapping = label_ids[id]['offset_mapping']
-        start_char = offset_mapping[start][0]
-        end_char = offset_mapping[end][1]
-
-        # Convert the start and end positions to span of text in the original context
-        prediction = examples["context"][id][start_char:end_char]
-        final_predictions.append({'id': id, 'prediction_text': prediction})
-
-        # Also convert labels
-        answer = examples['answers'][id]
-        final_labels.append({'id': id, 'answers': answer})
-
-    # Compute the metrics: F1 and exact match
-    results = squad_metric.compute(predictions=final_predictions, references=final_labels)
-    
-    return {
-        "f1": results["f1"],
-        "exact_match": results["exact_match"],
-    }
 def compute_metrics(start_logits, end_logits, features, examples):
     n_best = 20
     max_answer_length = 30
@@ -98,16 +69,29 @@ def compute_metrics(start_logits, end_logits, features, examples):
                         "logit_score": start_logit[start_index] + end_logit[end_index],
                     }
                     answers.append(answer)
-
-        # Select the answer with the best score
-        if len(answers) > 0:
-            best_answer = max(answers, key=lambda x: x["logit_score"])
-            predicted_answers.append(
-                {"id": example_id, "prediction_text": best_answer["text"]}
-            )
+            # If no valid answer, predict 'no_answer'
+        if len(answers) == 0:
+            predicted_answers.append({
+                "id": example_id, 
+                "prediction_text": "",
+                "no_answer_probability": 1.0  # Assuming you're certain there's no answer
+            })
         else:
-            predicted_answers.append({"id": example_id, "prediction_text": ""})
-    metric = evaluate.load("squad")
+            best_answer = max(answers, key=lambda x: x["logit_score"])
+            predicted_answers.append({
+                "id": example_id, 
+                "prediction_text": best_answer["text"],
+                "no_answer_probability": 0.0  # Assuming you're certain there is an answer
+            })
+        # # Select the answer with the best score
+        # if len(answers) > 0:
+        #     best_answer = max(answers, key=lambda x: x["logit_score"])
+        #     predicted_answers.append(
+        #         {"id": example_id, "prediction_text": best_answer["text"]}
+        #     )
+        # else:
+        #     predicted_answers.append({"id": example_id, "prediction_text": ""})
+    metric = evaluate.load("squad_v2")
     theoretical_answers = [{"id": ex["id"], "answers": ex["answers"]} for ex in examples]
     return metric.compute(predictions=predicted_answers, references=theoretical_answers)
 
@@ -256,7 +240,7 @@ def federated_learning(args, global_model, train_datasets, raw_datasets,tokenize
         global_model.to('cpu')
         #randomly select 10% client index for training
         np.random.seed(int(time.time()))  # Set the seed to the current time
-        client_indices = np.random.choice(len(tokenized_client_datasets), size=int(0.05*len(tokenized_client_datasets)), replace=False)
+        client_indices = np.random.choice(len(tokenized_client_datasets), size=int(0.1*len(tokenized_client_datasets)), replace=False)
 
         # for client_id, tokenized_client_dataset in enumerate(tokenized_client_datasets):
         for client_id in client_indices:
@@ -298,6 +282,7 @@ def federated_learning(args, global_model, train_datasets, raw_datasets,tokenize
             # #extract value from dict res
             # res = list(res.values())
             # logging.info(f"local model training finished, validation results: {res}")
+            
             print("local model training finished")
             logging.info(f"local model training finished")
             local_model.to("cpu")  # Move the local model to CPU memory
@@ -318,14 +303,13 @@ def federated_learning(args, global_model, train_datasets, raw_datasets,tokenize
             model=global_model,
             args=training_args,
             train_dataset=tokenized_client_dataset,
-            compute_metrics=compute_metrics1,
+            # compute_metrics=compute_metrics1,
         )
         predictions, _, _ = eval_trainer.predict(validation_dataset)
         start_logits, end_logits = predictions   
         res = compute_metrics(start_logits, end_logits, validation_dataset, raw_datasets["validation"])
         print("Global validation results: ", res)
-        res = list(res.values())
-        logging.info(f"Global validation results: {res}")
+        logging.info(f"Global validation results: {str(res)}")
     return global_model
 
 
@@ -348,6 +332,7 @@ def main(args):
         model_name = 'bert-base-uncased'
         tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
         global_model = BertForQuestionAnswering.from_pretrained(model_name)
+
     elif args.model == "bert-large":
         model_name = 'bert-large-uncased-whole-word-masking'
         tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
