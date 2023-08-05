@@ -4,3 +4,4 @@ ipykernel
 transformers
 tensorboard
 evaluate
+datasets
