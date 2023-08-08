@@ -14,7 +14,7 @@ import logging
 import sys
 import copy
 import os
-from split_data import DatasetSplitter, k_shot_data
+from utils.split_data import DatasetSplitter, k_shot_data
 
 # set no_deprecation_warning to True to avoid warning messages
 import collections
