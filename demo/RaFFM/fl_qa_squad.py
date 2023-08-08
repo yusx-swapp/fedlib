@@ -286,7 +286,9 @@ def federated_learning(args, global_model, train_datasets, raw_datasets,tokenize
                 'total_params':total_params,
                 }, 
                 communication_round)
-                              
+            print(f"Client {client_id} has {total_trainable_params} trainable parameters out of {total_params} parameters, which is {percentage}% in communication round {communication_round}")     
+            logging.info(f"Client {client_id} has {total_trainable_params} trainable parameters out of {total_params} parameters, which is {percentage}% in communication round {communication_round}")
+
             writer.add_scalar(str(client_id) + '/trainable_params_percentage', percentage, communication_round)
             
             # local_model = copy.deepcopy(global_model)
@@ -341,6 +343,9 @@ def federated_learning(args, global_model, train_datasets, raw_datasets,tokenize
         logging.info(f"Evaluating global model after communication round {communication_round}")
         writer.add_scalar("trainable_params/avg", avg_trainable_params/len(client_indices), communication_round)
         writer.add_scalar("trainable_params/org", total_params, communication_round)
+        print(f"Average trainable parameters is {avg_trainable_params/len(client_indices)} out of {total_params} parameters")
+        logging.info(f"Average trainable parameters is {avg_trainable_params/len(client_indices)} out of {total_params} parameters")
+
         eval_trainer = Trainer(
             model=global_model,
             args=training_args,
