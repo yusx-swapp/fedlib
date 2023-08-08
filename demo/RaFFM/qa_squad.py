@@ -87,7 +87,7 @@ def main(args):
     args = TrainingArguments(
         f"{model_name}-finetuned-squad",
         evaluation_strategy = "steps",
-        eval_steps = 10,
+        eval_steps = 1000,
         save_strategy = "no",
         learning_rate=2e-5,
         per_device_train_batch_size=24,
@@ -269,7 +269,9 @@ def main(args):
     start_logits, end_logits = predictions
 
 
-    compute_metrics(start_logits, end_logits, validation_dataset, datasets["validation"])
+    res = compute_metrics(start_logits, end_logits, validation_dataset, datasets["validation"])
+    print("validation results: ", res)
+    
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
