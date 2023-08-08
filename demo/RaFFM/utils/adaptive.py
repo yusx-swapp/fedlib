@@ -171,13 +171,15 @@ def gradient_masking_extraction(model, target_model_params_size):
                     '''
 
                     # Create a mask that keeps the first new_channels' gradients and masks out the others
-                    mask = torch.cat([torch.ones(sampled_channels), torch.zeros(original_channels - sampled_channels)]).to(module.weight.device)
+                    # mask = torch.cat([torch.ones(sampled_channels), torch.zeros(original_channels - sampled_channels)]).to(module.weight.device)
+                    mask = torch.cat([torch.ones(sampled_channels), torch.zeros(original_channels - sampled_channels)]).to('cuda')
                     module.weight_mask = mask  # Store the mask within the module
                     module.weight.register_hook(lambda grad: grad * mask if grad is not None else None)
 
                 elif name.endswith('.key'):
                     # key is always after by query and should match query, so here we dont need to sample again
-                    mask = torch.cat([torch.zeros(sampled_channels), torch.ones(original_channels - sampled_channels)]).to(module.weight.device)
+                    # mask = torch.cat([torch.zeros(sampled_channels), torch.ones(original_channels - sampled_channels)]).to(module.weight.device)
+                    mask = torch.cat([torch.zeros(sampled_channels), torch.ones(original_channels - sampled_channels)]).to('cuda')
                     module.weight_mask = mask  # Store the mask within the module
                     module.weight.register_hook(lambda grad: grad * mask if grad is not None else None)
 
@@ -193,7 +195,8 @@ def gradient_masking_extraction(model, target_model_params_size):
                     '''
                 elif name.endswith('.value'):
                     
-                    mask = torch.cat([torch.zeros(sampled_channels), torch.ones(original_channels - sampled_channels)]).to(module.weight.device)
+                    # mask = torch.cat([torch.zeros(sampled_channels), torch.ones(original_channels - sampled_channels)]).to(module.weight.device)
+                    mask = torch.cat([torch.zeros(sampled_channels), torch.ones(original_channels - sampled_channels)]).to('cuda')
                     module.weight_mask = mask  # Store the mask within the module
                     module.weight.register_hook(lambda grad: grad * mask if grad is not None else None)
 
@@ -211,11 +214,19 @@ def gradient_masking_extraction(model, target_model_params_size):
                     previous_channels = num_channels
                     '''
                 elif name.endswith('dense'):
+                    continue
                     dense_sampled_channels = random.choice(dense_channels)
                     dense_sampled_channels = min(dense_sampled_channels, original_channels)
                     mask = torch.cat([torch.zeros(dense_sampled_channels), torch.ones(original_channels - dense_sampled_channels)]).to(module.weight.device)
-                    module.weight_mask = mask  # Store the mask within the module
+                    # Reshape and expand mask to match weight tensor shape
+                    mask = mask.view(1, -1).expand_as(module.weight)
+
+                    # Register hook
                     module.weight.register_hook(lambda grad: grad * mask if grad is not None else None)
+                    # mask = mask.view(1, -1)  # Reshaping mask to align with the second dimension of weight
+                    # mask = mask.expand_as(module.weight)  # Expanding mask to match the shape of weight
+                    module.weight_mask = mask  # Store the mask within the module
+                    module.weight.register_hook(lambda grad: mask*grad  if grad is not None else None)
                     
                     '''
                     new_weight = module.weight.data[:sampled_channels]
