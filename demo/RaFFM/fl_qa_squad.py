@@ -24,7 +24,7 @@ from transformers import BertForQuestionAnswering, DistilBertForQuestionAnswerin
 import evaluate
 import time
 from torch.utils.tensorboard import SummaryWriter
-from utils.adaptive import reordering_weights, gradient_masking_extraction,calculate_trainable_params
+from utils.adaptive import reordering_weights, gradient_masking_extraction, calculate_trainable_params
 
 
 random_seed = 123
@@ -271,11 +271,17 @@ def federated_learning(args, global_model, train_datasets, raw_datasets,tokenize
 
         # for client_id, tokenized_client_dataset in enumerate(tokenized_client_datasets):
         avg_trainable_params = 0
-        for client_id in client_indices:
+        
+        for idx, client_id in enumerate(client_indices):
             tokenized_client_dataset = tokenized_client_datasets[client_id]
             print(f"Training client {client_id} in communication round {communication_round}")
             # global_model = reordering_weights(global_model)
-            local_model,total_trainable_params, total_params, percentage = gradient_masking_extraction(global_model, target_model_params_size=None) #Target model params size is None for randomly sample subnetwork
+            
+            if idx == 0:
+                local_model = copy.deepcopy(global_model)
+                total_trainable_params,total_params, percentage = calculate_trainable_params(local_model)
+            else:
+                local_model,total_trainable_params, total_params, percentage = gradient_masking_extraction(global_model, target_model_params_size=None) #Target model params size is None for randomly sample subnetwork
             avg_trainable_params += total_trainable_params
             
 

@@ -43,37 +43,28 @@ def reordering_weights(model):
         if hasattr(module, 'weight') and isinstance(module.weight, Parameter):
             # Ensure that the weights are trainable
             if module.weight.requires_grad:
-                # Get the weight matrix
-                if "encoder" not in name:
-                    continue
-                if "LayerNorm" in name:
-                    continue
                 weight_matrix = module.weight.data
                 
-                if len(weight_matrix.shape) == 4: # Conv2D layer or Multihead Attention
-                    # Calculate the matrix norm of each channel
-                   
-                    norms = torch.norm(weight_matrix, dim=(1,2,3))
-                    
-                elif len(weight_matrix.shape) == 2: # Linear layer
+                if name.endswith('dense'):
                     # print("weight matrix size",weight_matrix.size())
                     norms = torch.norm(weight_matrix, dim=1)
                     # print("norms size",norms.size())
+                    # Get the ordering indices
+                    order_indices = torch.argsort(norms, descending=True)
+                    
+                    # Reorder the weight matrix based on the indices
+                    ranked_weight_matrix = weight_matrix[order_indices]
+                    ranked_bias = module.bias.data[order_indices]
+                    # print(weight_matrix)
+                    # print(ranked_weight_matrix)
+                    # Replace the original weight matrix with the ranked one
+                    module.weight = Parameter(ranked_weight_matrix)
+                    module.bias = Parameter(ranked_bias)
                     
                 else: 
                     continue
 
-                # Get the ordering indices
-                order_indices = torch.argsort(norms, descending=True)
                 
-                # Reorder the weight matrix based on the indices
-                ranked_weight_matrix = weight_matrix[order_indices]
-                ranked_bias = module.bias.data[order_indices]
-                # print(weight_matrix)
-                # print(ranked_weight_matrix)
-                # Replace the original weight matrix with the ranked one
-                module.weight = Parameter(ranked_weight_matrix)
-                module.bias = Parameter(ranked_bias)
 
     return model
 

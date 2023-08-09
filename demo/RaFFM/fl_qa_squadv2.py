@@ -23,6 +23,8 @@ import numpy as np
 from transformers import BertForQuestionAnswering, DistilBertForQuestionAnswering
 import evaluate
 import time
+from torch.utils.tensorboard import SummaryWriter
+from utils.adaptive import reordering_weights, gradient_masking_extraction, calculate_trainable_params
 
 random_seed = 123
 
@@ -243,12 +245,25 @@ def federated_learning(args, global_model, train_datasets, raw_datasets,tokenize
         client_indices = np.random.choice(len(tokenized_client_datasets), size=int(0.1*len(tokenized_client_datasets)), replace=False)
 
         # for client_id, tokenized_client_dataset in enumerate(tokenized_client_datasets):
-        for client_id in client_indices:
+        avg_trainable_params = 0
+        for idx, client_id in enumerate(client_indices):
             tokenized_client_dataset = tokenized_client_datasets[client_id]
             print(f"Training client {client_id} in communication round {communication_round}")
 
-            local_model = copy.deepcopy(global_model)
+            if idx == 0:
+                local_model = copy.deepcopy(global_model)
+                total_trainable_params,total_params, percentage = calculate_trainable_params(local_model)
+            else:
+                local_model,total_trainable_params, total_params, percentage = gradient_masking_extraction(global_model, target_model_params_size=None) #Target model params size is None for randomly sample subnetwork
+            avg_trainable_params += total_trainable_params
+            
 
+            writer.add_scalar(str(client_id) + '/trainable_params', total_trainable_params, communication_round)
+            writer.add_scalar(str(client_id) + '/total_params', total_params, communication_round)
+            print(f"Client {client_id} has {total_trainable_params} trainable parameters out of {total_params} parameters, which is {percentage}% in communication round {communication_round}")     
+            logging.info(f"Client {client_id} has {total_trainable_params} trainable parameters out of {total_params} parameters, which is {percentage}% in communication round {communication_round}")
+
+            writer.add_scalar(str(client_id) + '/trainable_params_percentage', percentage, communication_round)
 
             logdir = os.path.join(args.log_dir, f"client_{client_id}")
 
@@ -298,6 +313,10 @@ def federated_learning(args, global_model, train_datasets, raw_datasets,tokenize
         
         print(f"Evaluating global model after communication round {communication_round}")
         logging.info(f"Evaluating global model after communication round {communication_round}")
+        writer.add_scalar("trainable_params/avg", avg_trainable_params/len(client_indices), communication_round)
+        writer.add_scalar("trainable_params/org", total_params, communication_round)
+        print(f"Average trainable parameters is {avg_trainable_params/len(client_indices)} out of {total_params} parameters")
+        logging.info(f"Average trainable parameters is {avg_trainable_params/len(client_indices)} out of {total_params} parameters")
         
         eval_trainer = Trainer(
             model=global_model,
@@ -309,6 +328,9 @@ def federated_learning(args, global_model, train_datasets, raw_datasets,tokenize
         start_logits, end_logits = predictions   
         res = compute_metrics(start_logits, end_logits, validation_dataset, raw_datasets["validation"])
         print("Global validation results: ", res)
+        writer.add_scalar("F1/validation", res["HasAns_f1"], communication_round)
+        writer.add_scalar("EM/validation", res["HasAns_exact"], communication_round)
+
         logging.info(f"Global validation results: {str(res)}")
     return global_model
 
@@ -403,7 +425,7 @@ if __name__ == "__main__":
             logging.StreamHandler(sys.stdout)
         ]
     )
-
+    writer = SummaryWriter(args.log_dir)
     main(args)
 
 #python fl_qa_squad.py --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset squad --log_dir suqad/100 --model bert-base
