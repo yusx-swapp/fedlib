@@ -275,8 +275,7 @@ def federated_learning(args, global_model, train_datasets, raw_datasets,tokenize
             tokenized_client_dataset = tokenized_client_datasets[client_id]
             print(f"Training client {client_id} in communication round {communication_round}")
             # global_model = reordering_weights(global_model)
-            local_model = gradient_masking_extraction(global_model, 100)
-            total_trainable_params, total_params, percentage= calculate_trainable_params(local_model)
+            local_model,total_trainable_params, total_params, percentage = gradient_masking_extraction(global_model, target_model_params_size=None) #Target model params size is None for randomly sample subnetwork
             avg_trainable_params += total_trainable_params
             
 
