@@ -261,16 +261,17 @@ def main(args):
     tokenize_test_dataset = test_dataset.map(lambda examples: tokenize_function(examples, tokenizer, args.dataset), batched=True)
     evaluate(args, global_model, tokenize_test_dataset)
 
+#python fl_glue.py --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset sst2 --per_device_train_batch_size 16 --per_device_eval_batch_size 16 --model bert-base --log_dir glue/sst2 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--method", choices=["centralized", "federated", "federated_foundation"], required=True)
+    # parser.add_argument("--method", choices=["centralized", "federated", "federated_foundation"], required=True)
     parser.add_argument("--split_data", action="store_true")
-    parser.add_argument("--num_clients", type=int, default=10)
+    parser.add_argument("--num_clients", type=int, default=100)
     parser.add_argument("--k_shot", type=int, default=4)
-    parser.add_argument("--num_rounds", type=int, default=5)
-    parser.add_argument("--num_epochs", type=int, default=50)
-    parser.add_argument("--num_local_epochs", type=int, default=30)
+    parser.add_argument("--num_rounds", type=int, default=100)
+    # parser.add_argument("--num_epochs", type=int, default=3)
+    parser.add_argument("--num_local_epochs", type=int, default=3)
     parser.add_argument("--dataset", type=str, default="sst2", choices=["sst2", "mrpc", "mnli", "qqp", "qnli", "stsb", "rte", "cola"], help="Choose between 'sst2', 'mrpc', 'mnli', 'qqp', 'qnli', 'stsb', 'rte', 'cola' datasets")
     parser.add_argument("--per_device_train_batch_size", type=int, default=40)
     parser.add_argument("--per_device_eval_batch_size", type=int, default=40)
