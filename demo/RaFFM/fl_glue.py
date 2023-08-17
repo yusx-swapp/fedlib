@@ -173,7 +173,7 @@ def federated_learning(args, global_model, tokenized_local_datasets, tokenize_va
         print(f"Average trainable parameters is {avg_trainable_params/len(client_indices)} out of {total_params} parameters")
         logging.info(f"Average trainable parameters is {avg_trainable_params/len(client_indices)} out of {total_params} parameters")
 
-        res = evaluate(args, global_model, tokenize_val_dataset, tokenizer)
+        res = evaluate(args, global_model, tokenize_val_dataset)
         writer.add_scalar("test_accuracy", res, communication_round)
         print(f"Test accuracy is {res}")
         logging.info(f"Test accuracy is {res}")
@@ -262,7 +262,7 @@ def main(args):
     logging.info(dash_line+"\nFinal evaluation")
     evaluate(args, global_model, tokenize_val_dataset)
 
-#python fl_glue.py --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset sst2 --per_device_train_batch_size 16 --per_device_eval_batch_size 16 --model bert-base --log_dir glue/sst2 
+#python fl_glue.py --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset sst2 --per_device_train_batch_size 16 --per_device_eval_batch_size 16 --model bert-base --log_dir log_glue/sst2 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
