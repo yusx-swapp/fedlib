@@ -114,13 +114,17 @@ def federated_learning(args, global_model, tokenized_local_datasets, tokenize_va
             tokenized_client_dataset = tokenized_local_datasets[client_id]
             print(f"Training client {client_id} in communication round {communication_round}")
 
-            if idx == 0:
+            if args.algo == 'raffm':
+
+                if idx == 0:
+                    local_model = copy.deepcopy(global_model)
+                    total_trainable_params,total_params, percentage = calculate_trainable_params(local_model)
+                else:
+                    local_model,total_trainable_params, total_params, percentage = gradient_masking_extraction(global_model, target_model_params_size=None) #Target model params size is None for randomly sample subnetwork
+                avg_trainable_params += total_trainable_params
+            elif args.algo == 'vanilla':
                 local_model = copy.deepcopy(global_model)
                 total_trainable_params,total_params, percentage = calculate_trainable_params(local_model)
-            else:
-                local_model,total_trainable_params, total_params, percentage = gradient_masking_extraction(global_model, target_model_params_size=None) #Target model params size is None for randomly sample subnetwork
-            avg_trainable_params += total_trainable_params
-
 
             writer.add_scalar(str(client_id) + '/trainable_params', total_trainable_params, communication_round)
             writer.add_scalar(str(client_id) + '/total_params', total_params, communication_round)
@@ -267,6 +271,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     # parser.add_argument("--method", choices=["centralized", "federated", "federated_foundation"], required=True)
+    parser.add_argument("--algo", type=str, default='raffm', choices=['vanilla','raffm'])
     parser.add_argument("--split_data", action="store_true")
     parser.add_argument("--num_clients", type=int, default=100)
     parser.add_argument("--k_shot", type=int, default=4)
