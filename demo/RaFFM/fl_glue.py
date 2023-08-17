@@ -98,7 +98,7 @@ def evaluate(args, global_model, tokenized_test_dataset):
 
 
 
-def federated_learning(args, global_model, train_datasets, test_dataset, tokenizer):
+def federated_learning(args, global_model, tokenized_local_datasets, tokenize_val_dataset, tokenizer):
     # global_model = DistilBertForSequenceClassification.from_pretrained(model_name, num_labels=2)
 
     for communication_round in range(args.num_rounds):
@@ -107,11 +107,11 @@ def federated_learning(args, global_model, train_datasets, test_dataset, tokeniz
         global_model.to('cpu')
         #randomly select 10% client index for training
         np.random.seed(int(time.time()))  # Set the seed to the current time
-        client_indices = np.random.choice(len(train_datasets), size=int(0.1*len(train_datasets)), replace=False)
+        client_indices = np.random.choice(len(tokenized_local_datasets), size=int(0.1*len(tokenized_local_datasets)), replace=False)
         avg_trainable_params = 0
         for idx, client_id in enumerate(client_indices):
         # for client_id, client_dataset in enumerate(train_datasets):
-            client_dataset = train_datasets[client_id]
+            tokenized_client_dataset = tokenized_local_datasets[client_id]
             print(f"Training client {client_id} in communication round {communication_round}")
 
             if idx == 0:
@@ -120,8 +120,6 @@ def federated_learning(args, global_model, train_datasets, test_dataset, tokeniz
             else:
                 local_model,total_trainable_params, total_params, percentage = gradient_masking_extraction(global_model, target_model_params_size=None) #Target model params size is None for randomly sample subnetwork
             avg_trainable_params += total_trainable_params
-
-            tokenized_client_dataset = client_dataset.map(lambda examples: tokenize_function(examples, tokenizer, args.dataset), batched=True)
 
 
             writer.add_scalar(str(client_id) + '/trainable_params', total_trainable_params, communication_round)
@@ -175,7 +173,7 @@ def federated_learning(args, global_model, train_datasets, test_dataset, tokeniz
         print(f"Average trainable parameters is {avg_trainable_params/len(client_indices)} out of {total_params} parameters")
         logging.info(f"Average trainable parameters is {avg_trainable_params/len(client_indices)} out of {total_params} parameters")
 
-        res = evaluate(args, global_model, test_dataset, tokenizer)
+        res = evaluate(args, global_model, tokenize_val_dataset, tokenizer)
         writer.add_scalar("test_accuracy", res, communication_round)
         print(f"Test accuracy is {res}")
         logging.info(f"Test accuracy is {res}")
@@ -234,7 +232,8 @@ def main(args):
 
     train_dataset = dataset["train"]
     val_dataset = dataset["validation"]
-    test_dataset = dataset["test"]
+    # test_dataset = dataset["test"]
+    tokenize_val_dataset = val_dataset.map(lambda examples: tokenize_function(examples, tokenizer, args.dataset), batched=True)
 
 
 
@@ -252,15 +251,16 @@ def main(args):
         local_datasets = splitter.split(n=args.num_clients, replacement=False)
 
 
+    tokenized_local_datasets = []
+    for client_dataset in local_datasets:
+        tokenized_local_datasets.append(client_dataset.map(lambda examples: tokenize_function(examples, tokenizer, args.dataset), batched=True))
     
-    
-    global_model = federated_learning(args, global_model,local_datasets, val_dataset, tokenizer)
+    global_model = federated_learning(args, global_model,tokenized_local_datasets, tokenize_val_dataset, tokenizer)
 
 
     print(dash_line+"\nFinal evaluation")
     logging.info(dash_line+"\nFinal evaluation")
-    tokenize_test_dataset = test_dataset.map(lambda examples: tokenize_function(examples, tokenizer, args.dataset), batched=True)
-    evaluate(args, global_model, tokenize_test_dataset)
+    evaluate(args, global_model, tokenize_val_dataset)
 
 #python fl_glue.py --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset sst2 --per_device_train_batch_size 16 --per_device_eval_batch_size 16 --model bert-base --log_dir glue/sst2 
 if __name__ == "__main__":
