@@ -108,6 +108,7 @@ def federated_learning(args, global_model, train_datasets, test_dataset, tokeniz
         #randomly select 10% client index for training
         np.random.seed(int(time.time()))  # Set the seed to the current time
         client_indices = np.random.choice(len(train_datasets), size=int(0.1*len(train_datasets)), replace=False)
+        avg_trainable_params = 0
         for idx, client_id in enumerate(client_indices):
         # for client_id, client_dataset in enumerate(train_datasets):
             client_dataset = train_datasets[client_id]
