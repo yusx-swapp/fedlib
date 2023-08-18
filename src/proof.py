@@ -6,7 +6,12 @@ from torchvision import models as models
 import numpy as np
 import torchvision
 from efficientnet_pytorch import EfficientNet
+from torchvision.datasets import CIFAR10
+from torchvision.transforms import ToTensor
+from torch.utils.data import DataLoader, Subset
+import matplotlib.pyplot as plt
 import copy
+import pickle
 import argparse
 from fedlib.utils import get_logger, init_logs
 from fedlib.ve.csfl import CSFLEnv
@@ -68,7 +73,7 @@ if __name__ == '__main__':
     log_file_name = 'experiment_log-%s' % (datetime.datetime.now().strftime("%Y-%m-%d-%H:%M-%S"))
     # log_dir = './logs/{}_dataset[{}]_model[{}]_partition[{}]_nodes[{}]_rounds[{}]_frac[{}]_local_ep[{}]_local_bs[{}]_beta[{}]_noise[{}]/'. \
     #     format(NOW,args.dataset, args.model, args.partition, args.n_clients, args.comm_round, args.sample,args.epochs, args.batch_size, args.beta, args.noise)
-    log_dir = './logs/{}_dataset[{}]_model[{}]_partition[{}]_algo[{}]_clients[{}]_rounds[{}]_frac[{}]_lr[{}]_scheduler[{}]_decay_rate[{}]_local_bs[{}]_beta[{}]_noise[{}]/'. \
+    log_dir = './proofs/{}_dataset[{}]_model[{}]_partition[{}]_algo[{}]_clients[{}]_rounds[{}]_frac[{}]_lr[{}]_scheduler[{}]_decay_rate[{}]_local_bs[{}]_beta[{}]_noise[{}]/'. \
         format(NOW,args.dataset, args.model, args.partition, "CSFL", args.n_clients, args.comm_round, args.sample, args.lr, args.lr_scheduler, args.decay_rate, args.batch_size, args.beta, args.noise)
     
     args = vars(args)
@@ -98,17 +103,18 @@ if __name__ == '__main__':
     # label_node_map[7] = [3,8,13,18,23]
     # label_node_map[8] = [4,9,14,19]
     # label_node_map[9] = [4,9,14,19]
-    label_node_map = {}
-    label_node_map[0] = [0,1,2,3,4]
-    label_node_map[1] = [0,1,2,3,4]
-    label_node_map[2] = [0,1,2,3,4,5,6]
-    label_node_map[3] = [5,6,7,8,9]
-    label_node_map[4] = [5,6,7,8,9,10,11]
-    label_node_map[5] = [10,11,12,13]
-    label_node_map[6] = [10,11,12,13,14]
-    label_node_map[7] = [13,14,15,16]
-    label_node_map[8] = [13,14,15,16,17,18]
-    label_node_map[9] = [19,20,21,22,23]
+    label_node_map = None
+    # label_node_map = {}
+    # label_node_map[0] = [0,1,2,3,4]
+    # label_node_map[1] = [0,1,2,3,4]
+    # label_node_map[2] = [0,1,2,3,4,5,6]
+    # label_node_map[3] = [5,6,7,8,9]
+    # label_node_map[4] = [5,6,7,8,9,10,11]
+    # label_node_map[5] = [10,11,12,13]
+    # label_node_map[6] = [10,11,12,13,14]
+    # label_node_map[7] = [13,14,15,16]
+    # label_node_map[8] = [13,14,15,16,17,18]
+    # label_node_map[9] = [19,20,21,22,23]
 
     X_train, y_train, X_test, y_test, net_dataidx_map, traindata_cls_counts = partition_data(
     args["dataset"],args["datadir"], args['partition'], args['n_clients'], beta=args['beta'],split=args['split'],label_node_map=label_node_map)
@@ -116,6 +122,7 @@ if __name__ == '__main__':
     print("X_train.shape:",X_train.shape,"\ty_train.shape:",y_train.shape)
     print("X_test.shape:",X_test.shape,"\ty_test.shape:",y_test.shape)
     print("LABELS:",n_classes)
+    args["n_classes"] = n_classes
     train_dl_global, test_dl_global, train_ds_global, test_ds_global = get_dataloader(args["dataset"],
                                                                                     args["datadir"],
                                                                                       args["batch_size"],
@@ -148,7 +155,8 @@ if __name__ == '__main__':
     elif args["dataset"] == "cifar10":
         #Use custom resnet for cifar10
         if args["model"] == "res20":
-            model = resnet20(10)
+            #model = resnet20(10)
+            model = models.resnet18(pretrained=False)
         elif args["model"] == "vgg11":
             model = vgg11(10)
         elif args["model"] == "mobilenetv3":
@@ -191,7 +199,69 @@ if __name__ == '__main__':
     print("Done pretraining")
     simulator.cluster(sim_measure=args["sim_measure"],num_clusters=args["num_clusters"])
     print("Done clustering")
-    simulator.run(local_epochs=args["epochs"])
+    #simulator.run(local_epochs=args["epochs"])
+
+    #Compute similarities
+    #Measure sample entropies
+    rand_entropies, strat_entropies = [], []
+    for i in range(500):
+        random_sampler_entropy = simulator.compare_sample_entropies(sampler='random')
+        rand_entropies.append(round(random_sampler_entropy,2))
+    
+    for i in range(500):
+        clustered_sampler_entropy = simulator.compare_sample_entropies(sampler='stratified')
+        strat_entropies.append(round(clustered_sampler_entropy,2))
+    
+    logger.info(f'random entropies: {rand_entropies}')
+    logger.info(f'strat entropies: {strat_entropies}')
+    print("Done with computing entropy")
+
+    mechanism = 'stratified'
+    cluster_sims, avg = simulator.compute_cluster_activation_similarities(mechanism=mechanism)
+    logger.info(f"{mechanism} mean distance : {round(avg,2)}")
+    for k,cluster_sim in enumerate(cluster_sims):
+        logger.info(f"\t -> cluster-{k} : {cluster_sim}")
+    
+    mechanism = 'random'
+    cluster_sims, avg = simulator.compute_cluster_activation_similarities(mechanism=mechanism)
+    logger.info(f"{mechanism} HLF mean distance : {round(avg,2)}")
+    for k,cluster_sim in enumerate(cluster_sims):
+        logger.info(f"\t -> cluster-{k} : {cluster_sim}")
+        
+    print("Done with computing HLF similarities")
+
+    # transform = ToTensor()
+    # cifar_test = CIFAR10(root='./data', train=False, download=True, transform=transform)
+
+    # dataloader = DataLoader(cifar_test, 
+    #                         batch_size=32, # according to your device memory
+    #                         shuffle=False)  # Don't forget to seed your dataloader
+
+    subset_dataset = Subset(test_dl_global.dataset, indices=range(1000))
+    subset_datalaoder = DataLoader(subset_dataset,batch_size=32)
+
+    intra_results, inter_results = simulator.compute_cka(device='cuda',dataloader=subset_datalaoder)
+
+    plt.imshow(intra_results['CKA'])
+    plt.xlabel('Layers model_1a')
+    plt.ylabel('Layers model_1b')
+    plt.colorbar()
+    plt.savefig(log_dir + 'Intra-cluster.png')
+    plt.close()
+
+    plt.imshow(inter_results['CKA'])
+    plt.xlabel('Layers model_1a')
+    plt.ylabel('Layers model_2')
+    plt.colorbar()
+    plt.savefig(log_dir + 'Inter-cluster.png')
+    plt.close()
+
+    with open(log_dir + "intra_cka_results.pickle", "wb") as file:
+        pickle.dump(intra_results, file)
+    
+    with open(log_dir + "inter_cka_results.pickle", "wb") as file:
+        pickle.dump(inter_results, file)
+    
 
 
 '''

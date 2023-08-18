@@ -5,3 +5,6 @@ transformers
 tensorboard
 torch
 torchvision
+efficientnet_pytorch
+torch_cka
+matplotlib

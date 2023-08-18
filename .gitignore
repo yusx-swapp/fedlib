@@ -18,4 +18,5 @@ demo/data/*
 .DS_Store
 data/
 *logs/
+*proofs/
 **.ini

@@ -154,6 +154,21 @@ class Trainer(BaseTrainer):
                     metrics["test_total"] += target.size(0) * target.size(1)
         metrics["test_accuracy"] = metrics["test_correct"] / len(test_data.dataset)
         return metrics
+    
+    def vectorize(self, model, test_data, device):
+        model.fc = torch.nn.Identity()
+        model.to(device)
+        model.eval()
+        vectors = []
+        with torch.no_grad():
+            for batch_idx, (x, target) in enumerate(test_data):
+                
+                x = x.to(device)
+                target = target.to(device)
+                encoddings = model(x)
+                vectors += encoddings
+                
+        return vectors
 
     def _to_img(self, img, transform = None):
         if transforms is None:

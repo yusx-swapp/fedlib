@@ -9,6 +9,7 @@ class Server:
         self._device = kwargs["device"]
         
         self._init_sampler(kwargs["sampler"])
+        self._n_classes = kwargs["n_classes"]
         
         self._trainer = kwargs["trainer"]
         self._communicator = kwargs["communicator"]
@@ -18,6 +19,7 @@ class Server:
         
         #TODO: change to testloader
         self._test_dataset = kwargs["test_dl_global"]
+        self._val_dl_global = kwargs["val_dl_global"]
         
         #TODO: add attribute client participation rate
         
@@ -69,6 +71,30 @@ class Server:
     def client_sample(self, **kwargs):
         return self.sampler(**kwargs)
 
+    def class_probs(self):
+        # Initialize the number of labels
+        num_labels = self._n_classes
+
+        # Initialize a dictionary to store class counts
+        class_counts = {label: 0 for label in range(num_labels)}
+
+        # Iterate over the dataset using the dataloader
+        for inputs, labels in self._test_dataset:
+            # Count the occurrences of each class
+            for label in labels:
+                class_counts[label.item()] += 1
+
+        # Calculate the probabilities
+        total_samples = len(self._test_dataset.dataset)
+        class_probabilities = {
+            label: count / total_samples for label, count in class_counts.items()
+        }
+
+        # Print the probabilities
+        # for label, probability in class_probabilities.items():
+        #     print(f"Class {label}: Probability {probability}")
+        
+        return class_probabilities
 
     def get_global_model(self):
         return self._global_model

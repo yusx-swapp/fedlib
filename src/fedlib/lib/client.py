@@ -18,6 +18,7 @@ class Client:
         self._val_dl_global = kwargs["val_dl_global"]
         self._lr = kwargs["lr"]
         self._global_output = None
+        self._n_classes = kwargs["n_classes"]
 
         self.datasize = len(self._trainloader.dataset)
         self._trainer = kwargs["trainer"]
@@ -77,6 +78,31 @@ class Client:
     def _communication(self):
         self._communicator.communication()
     
+    def class_probs(self):
+        # Initialize the number of labels
+        num_labels = self._n_classes
+
+        # Initialize a dictionary to store class counts
+        class_counts = {label: 0 for label in range(num_labels)}
+
+        # Iterate over the dataset using the dataloader
+        for inputs, labels in self._trainloader:
+            # Count the occurrences of each class
+            for label in labels:
+                class_counts[label.item()] += 1
+
+        # Calculate the probabilities
+        total_samples = len(self._trainloader.dataset)
+        class_probabilities = {
+            label: count / total_samples for label, count in class_counts.items()
+        }
+
+        # Print the probabilities
+        # for label, probability in class_probabilities.items():
+        #     print(f"Class {label}: Probability {probability}")
+        
+        return class_probabilities
+    
     def client_update(self,**kwargs):
         kwargs["dataloader"] = self._trainloader
         kwargs["device"] = self._device
@@ -86,6 +112,9 @@ class Client:
         kwargs["criterion"] = self.criterion
 
         self._trainer.train(**kwargs)
+    
+    def get_latent_vectors(self):
+        return self._trainer.vectorize(self._model, self._val_dl_global, self._device)
         
     @abstractmethod
     def client_run(self, **kwargs):
