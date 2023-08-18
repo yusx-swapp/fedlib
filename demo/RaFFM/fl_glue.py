@@ -121,11 +121,11 @@ def federated_learning(args, global_model, tokenized_local_datasets, tokenize_va
                     total_trainable_params,total_params, percentage = calculate_trainable_params(local_model)
                 else:
                     local_model,total_trainable_params, total_params, percentage = gradient_masking_extraction(global_model, target_model_params_size=None) #Target model params size is None for randomly sample subnetwork
-                avg_trainable_params += total_trainable_params
             elif args.algo == 'vanilla':
                 local_model = copy.deepcopy(global_model)
                 total_trainable_params,total_params, percentage = calculate_trainable_params(local_model)
 
+            avg_trainable_params += total_trainable_params
             writer.add_scalar(str(client_id) + '/trainable_params', total_trainable_params, communication_round)
             writer.add_scalar(str(client_id) + '/total_params', total_params, communication_round)
             print(f"Client {client_id} has {total_trainable_params} trainable parameters out of {total_params} parameters, which is {percentage}% in communication round {communication_round}")     
@@ -266,7 +266,14 @@ def main(args):
     logging.info(dash_line+"\nFinal evaluation")
     evaluate(args, global_model, tokenize_val_dataset)
 
-#python fl_glue.py --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset sst2 --per_device_train_batch_size 16 --per_device_eval_batch_size 16 --model bert-base --log_dir log_glue/sst2 
+#python fl_glue.py --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset sst2 --per_device_train_batch_size 16 --per_device_eval_batch_size 16 --model bert-base --log_dir log_glue/sst2 > raffm_bert_base_100_sst.txt
+
+"""
+baseline running command:
+python fl_glue.py --algo vanilla --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset sst2 --per_device_train_batch_size 32 --per_device_eval_batch_size 32 --model bert-base --log_dir log_glue/baseline/sst2 > baseline_raffm_bert_base_100_sst.txt
+
+"""
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
