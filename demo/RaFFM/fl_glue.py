@@ -100,7 +100,9 @@ def evaluate(args, global_model, tokenized_test_dataset):
 
 def federated_learning(args, global_model, tokenized_local_datasets, tokenize_val_dataset, tokenizer):
     # global_model = DistilBertForSequenceClassification.from_pretrained(model_name, num_labels=2)
-
+    
+    best_model = copy.deepcopy(global_model.to('cpu'))
+    best_acc = 0
     for communication_round in range(args.num_rounds):
         local_models = []
         lr = step_lr(args.learning_rate, communication_round, 5, 0.98)
@@ -181,7 +183,12 @@ def federated_learning(args, global_model, tokenized_local_datasets, tokenize_va
         writer.add_scalar("test_accuracy", res, communication_round)
         print(f"Test accuracy is {res}")
         logging.info(f"Test accuracy is {res}")
-    return global_model
+
+        if res > best_acc:
+            best_acc = res
+            best_model = copy.deepcopy(global_model.to('cpu'))
+        
+    return global_model,best_model
 
 
 def main(args):
@@ -259,19 +266,36 @@ def main(args):
     for client_dataset in local_datasets:
         tokenized_local_datasets.append(client_dataset.map(lambda examples: tokenize_function(examples, tokenizer, args.dataset), batched=True))
     
-    global_model = federated_learning(args, global_model,tokenized_local_datasets, tokenize_val_dataset, tokenizer)
+    global_model,best_model = federated_learning(args, global_model,tokenized_local_datasets, tokenize_val_dataset, tokenizer)
 
 
     print(dash_line+"\nFinal evaluation")
     logging.info(dash_line+"\nFinal evaluation")
     evaluate(args, global_model, tokenize_val_dataset)
 
-#python fl_glue.py --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset sst2 --per_device_train_batch_size 16 --per_device_eval_batch_size 16 --model bert-base --log_dir log_glue/sst2 > raffm_bert_base_100_sst.txt
+    print(dash_line+"\nBest model evaluation")
+    logging.info(dash_line+"\nBest model evaluation")
+    evaluate(args, best_model, tokenize_val_dataset)
+    if args.save_model:
+        best_model.save_pretrained(os.path.join(args.log_dir, "best_model"))
 
 """
+
+python fl_glue.py --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset sst2 --per_device_train_batch_size 32 --per_device_eval_batch_size 32 --model bert-base --log_dir log_glue/sst2 > raffm_bert_base_100_sst.txt
+python fl_glue.py --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset mrpc --per_device_train_batch_size 32 --per_device_eval_batch_size 32 --model bert-base --log_dir log_glue/mrpc > raffm_bert_base_100_mrpc.txt
+python fl_glue.py --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset cola --per_device_train_batch_size 32 --per_device_eval_batch_size 32 --model bert-base --log_dir log_glue/cola > raffm_bert_base_100_cola.txt
+python fl_glue.py --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset rte --per_device_train_batch_size 24 --per_device_eval_batch_size 24 --model bert-base --log_dir log_glue/rte > raffm_bert_base_100_rte.txt
+python fl_glue.py --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset stsb --per_device_train_batch_size 24 --per_device_eval_batch_size 24 --model bert-base --log_dir log_glue/stsb > raffm_bert_base_100_stsb.txt
+python fl_glue.py --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset qqp --per_device_train_batch_size 24 --per_device_eval_batch_size 24 --model bert-base --log_dir log_glue/qqp > raffm_bert_base_100_qqp.txt
+python fl_glue.py --save_model --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset qnli --per_device_train_batch_size 24 --per_device_eval_batch_size 24 --model bert-base --log_dir log_glue/qnli > raffm_bert_base_100_qnli.txt
 baseline running command:
 python fl_glue.py --algo vanilla --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset sst2 --per_device_train_batch_size 32 --per_device_eval_batch_size 32 --model bert-base --log_dir log_glue/baseline/sst2 > baseline_raffm_bert_base_100_sst.txt
-
+python fl_glue.py --algo vanilla --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset mrpc --per_device_train_batch_size 32 --per_device_eval_batch_size 32 --model bert-base --log_dir log_glue/baseline/mrpc > baseline_raffm_bert_base_100_mrpc.txt
+python fl_glue.py --algo vanilla --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset cola --per_device_train_batch_size 32 --per_device_eval_batch_size 32 --model bert-base --log_dir log_glue/baseline/cola > baseline_raffm_bert_base_100_cola.txt
+python fl_glue.py --algo vanilla --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset rte --per_device_train_batch_size 24 --per_device_eval_batch_size 24 --model bert-base --log_dir log_glue/baseline/rte > baseline_raffm_bert_base_100_rte.txt
+python fl_glue.py --algo vanilla --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset stsb --per_device_train_batch_size 24 --per_device_eval_batch_size 24 --model bert-base --log_dir log_glue/baseline/stsb > baseline_raffm_bert_base_100_stsb.txt
+python fl_glue.py --algo vanilla --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset qqp --per_device_train_batch_size 24 --per_device_eval_batch_size 24 --model bert-base --log_dir log_glue/baseline/qqp > baseline_raffm_bert_base_100_qqp.txt
+python fl_glue.py --save_model --algo vanilla --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset qnli --per_device_train_batch_size 24 --per_device_eval_batch_size 24 --model bert-base --log_dir log_glue/baseline/qnli > baseline_raffm_bert_base_100_qnli.txt
 """
 
 if __name__ == "__main__":
@@ -291,6 +315,7 @@ if __name__ == "__main__":
     parser.add_argument("--log_dir", type=str, default="centralized/4")
     parser.add_argument("--learning_rate", type=float, default=2e-5)
     parser.add_argument("--model", type=str, default="distilbert", choices=["distilbert", "bert-base","roberta", "t5"], help="Choose between 'distilbert', 'roberta', and 't5' models")
+    parser.add_argument("--save_model", action="store_true")
     args = parser.parse_args()
     
     os.makedirs(args.log_dir, exist_ok=True)
