@@ -22,24 +22,27 @@ class BaseTrainer(ABC):
             """_summary_
 
             Args:
-                model (nn.Module): _description_
-                dataloader (_type_): _description_
-                criterion (_type_): _description_
-                optimizer (_type_): _description_
-                epochs (int): _description_
-                device (_type_): _description_
+                model (nn.Module): local model
+                dataloader (torch.utils.data.DataLoader): dataloader for local private dataset        
+                criterion (nn.functional): loss function
+                optimizer (nn.Optimizer): optimizer (e.g., SGD, Adam, etc.)
+                epochs (int): number of local epochs
+                device (str): device to run the model
+
+            Returns:
+                model: updated local model
             """
             pass
 
     def aggregate(self, **kwargs):        
             """
             kwargs:
-                nets_params: 
-                local_datasize:
-                global_para: 
+                nets_weights: local model weights
+                local_datasize: corresponding local dataset size
+                global_weights: current global model weights
 
             Returns:
-                global_para: _description_
+                global_para: aggregated global model weights
             """
             pass
 
@@ -89,4 +92,4 @@ class BaseTrainer(ABC):
         metrics["test_accuracy"] = metrics["test_correct"] / len(test_data.dataset)
         return metrics
 
-        
+#Sampler class: contain sample method to sample local clients for current round of training

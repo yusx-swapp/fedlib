@@ -17,6 +17,17 @@ logger = get_logger()
 
 
 def load_mnist_data(datadir):
+    """Load MNIST data.
+
+    Args:
+        datadir: dataset directory
+
+    Returns:
+        X_train: training data
+        y_train: training label
+        X_test: test data
+        y_test: test label
+    """
     transform = transforms.Compose([transforms.ToTensor()])
 
     mnist_train_ds = MNIST_truncated(datadir, train=True, download=True, transform=transform)
