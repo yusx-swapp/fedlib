@@ -98,7 +98,7 @@ def evaluate(args, global_model, tokenized_test_dataset):
 
 
 
-def federated_learning(args, global_model, tokenized_local_datasets, tokenize_val_dataset, tokenizer):
+def federated_learning(args, global_model, tokenized_local_datasets, tokenize_val_dataset, tokenize_test_dataset=None ):
     # global_model = DistilBertForSequenceClassification.from_pretrained(model_name, num_labels=2)
     
     best_model = copy.deepcopy(global_model.to('cpu'))
@@ -180,9 +180,19 @@ def federated_learning(args, global_model, tokenized_local_datasets, tokenize_va
         logging.info(f"Average trainable parameters is {avg_trainable_params/len(client_indices)} out of {total_params} parameters")
 
         res = evaluate(args, global_model, tokenize_val_dataset)
-        writer.add_scalar("test_accuracy", res, communication_round)
-        print(f"Test accuracy is {res}")
-        logging.info(f"Test accuracy is {res}")
+        writer.add_scalar("val_accuracy", res, communication_round)
+        print(f"Val accuracy is {res}")
+        logging.info(f"Val accuracy is {res}")
+
+        if tokenize_test_dataset is not None:
+            try:
+                test_acc = evaluate(args, global_model, tokenize_test_dataset)
+                writer.add_scalar("test_accuracy", test_acc, communication_round)
+                print(f"Test accuracy is {test_acc}")
+                logging.info(f"Test accuracy is {test_acc}")
+            except:
+                print("Test accuracy is not calculated")
+                logging.info("Test accuracy is not calculated")
 
         if res > best_acc:
             best_acc = res
@@ -243,7 +253,8 @@ def main(args):
 
     train_dataset = dataset["train"]
     val_dataset = dataset["validation"]
-    # test_dataset = dataset["test"]
+    test_dataset = dataset["test"]
+    tokenize_test_dataset = test_dataset.map(lambda examples: tokenize_function(examples, tokenizer, args.dataset), batched=True)
     tokenize_val_dataset = val_dataset.map(lambda examples: tokenize_function(examples, tokenizer, args.dataset), batched=True)
 
 
@@ -266,7 +277,7 @@ def main(args):
     for client_dataset in local_datasets:
         tokenized_local_datasets.append(client_dataset.map(lambda examples: tokenize_function(examples, tokenizer, args.dataset), batched=True))
     
-    global_model,best_model = federated_learning(args, global_model,tokenized_local_datasets, tokenize_val_dataset, tokenizer)
+    global_model,best_model = federated_learning(args, global_model,tokenized_local_datasets, tokenize_val_dataset, tokenize_test_dataset=tokenize_test_dataset)
 
 
     print(dash_line+"\nFinal evaluation")
@@ -287,7 +298,7 @@ python fl_glue.py --split_data --num_clients 100 --num_rounds 100 --num_local_ep
 python fl_glue.py --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset rte --per_device_train_batch_size 24 --per_device_eval_batch_size 24 --model bert-base --log_dir log_glue/rte > raffm_bert_base_100_rte.txt
 python fl_glue.py --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset stsb --per_device_train_batch_size 24 --per_device_eval_batch_size 24 --model bert-base --log_dir log_glue/stsb > raffm_bert_base_100_stsb.txt
 python fl_glue.py --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset qqp --per_device_train_batch_size 24 --per_device_eval_batch_size 24 --model bert-base --log_dir log_glue/qqp > raffm_bert_base_100_qqp.txt
-python fl_glue.py --save_model --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset qnli --per_device_train_batch_size 24 --per_device_eval_batch_size 24 --model bert-base --log_dir log_glue/qnli > raffm_bert_base_100_qnli.txt
+python fl_glue.py --save_model --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset qnli --per_device_train_batch_size 8 --per_device_eval_batch_size 8 --model bert-base --log_dir log_glue/qnli > raffm_bert_base_100_qnli.txt
 baseline running command:
 python fl_glue.py --algo vanilla --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset sst2 --per_device_train_batch_size 32 --per_device_eval_batch_size 32 --model bert-base --log_dir log_glue/baseline/sst2 > baseline_raffm_bert_base_100_sst.txt
 python fl_glue.py --algo vanilla --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset mrpc --per_device_train_batch_size 32 --per_device_eval_batch_size 32 --model bert-base --log_dir log_glue/baseline/mrpc > baseline_raffm_bert_base_100_mrpc.txt
@@ -295,7 +306,7 @@ python fl_glue.py --algo vanilla --split_data --num_clients 100 --num_rounds 100
 python fl_glue.py --algo vanilla --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset rte --per_device_train_batch_size 24 --per_device_eval_batch_size 24 --model bert-base --log_dir log_glue/baseline/rte > baseline_raffm_bert_base_100_rte.txt
 python fl_glue.py --algo vanilla --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset stsb --per_device_train_batch_size 24 --per_device_eval_batch_size 24 --model bert-base --log_dir log_glue/baseline/stsb > baseline_raffm_bert_base_100_stsb.txt
 python fl_glue.py --algo vanilla --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset qqp --per_device_train_batch_size 24 --per_device_eval_batch_size 24 --model bert-base --log_dir log_glue/baseline/qqp > baseline_raffm_bert_base_100_qqp.txt
-python fl_glue.py --save_model --algo vanilla --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset qnli --per_device_train_batch_size 24 --per_device_eval_batch_size 24 --model bert-base --log_dir log_glue/baseline/qnli > baseline_raffm_bert_base_100_qnli.txt
+python fl_glue.py --save_model --algo vanilla --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset qnli --per_device_train_batch_size 8 --per_device_eval_batch_size 8 --model bert-base --log_dir log_glue/baseline/qnli > baseline_raffm_bert_base_100_qnli.txt
 """
 
 if __name__ == "__main__":
