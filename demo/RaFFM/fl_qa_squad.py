@@ -260,6 +260,8 @@ def federated_learning(args, global_model, train_datasets, raw_datasets,tokenize
         batched=True,
         remove_columns=raw_datasets["validation"].column_names,
     )
+    best_model = copy.deepcopy(global_model.to('cpu'))
+    best_acc = 0
     for communication_round in range(args.num_rounds):
 
         lr = step_lr(args.learning_rate, communication_round, 5, 0.98)
@@ -277,12 +279,18 @@ def federated_learning(args, global_model, train_datasets, raw_datasets,tokenize
             print(f"Training client {client_id} in communication round {communication_round}")
             # global_model = reordering_weights(global_model)
             
-            if idx == 0:
+
+            if args.algo == 'raffm':
+
+                if idx == 0:
+                    local_model = copy.deepcopy(global_model)
+                    total_trainable_params,total_params, percentage = calculate_trainable_params(local_model)
+                else:
+                    local_model,total_trainable_params, total_params, percentage = gradient_masking_extraction(global_model, target_model_params_size=None) #Target model params size is None for randomly sample subnetwork
+            elif args.algo == 'vanilla':
                 local_model = copy.deepcopy(global_model)
                 total_trainable_params,total_params, percentage = calculate_trainable_params(local_model)
-            else:
-                local_model,total_trainable_params, total_params, percentage = gradient_masking_extraction(global_model, target_model_params_size=None) #Target model params size is None for randomly sample subnetwork
-            avg_trainable_params += total_trainable_params
+            
             
 
             writer.add_scalar(str(client_id) + '/trainable_params', total_trainable_params, communication_round)
@@ -361,8 +369,11 @@ def federated_learning(args, global_model, train_datasets, raw_datasets,tokenize
         res = list(res.values())
         logging.info(f"Global validation results: {res}")
         
+        if res["f1"] > best_acc:
+            best_acc = res["f1"]
+            best_model = copy.deepcopy(global_model.to('cpu'))
         
-    return global_model
+    return global_model,best_model
 
 
 def main(args):
@@ -423,18 +434,24 @@ def main(args):
 
     
     
-    global_model = federated_learning(args, global_model,local_datasets, datasets,tokenizer)
+    global_model,best_model = federated_learning(args, global_model,local_datasets, datasets,tokenizer)
 
+    print(dash_line+"\nTraining finished")
+    logging.info(dash_line+"\nTraining finished")
 
-    print(dash_line+"\nFinal evaluation")
-    logging.info(dash_line+"\nFinal evaluation")
-    # tokenize_test_dataset = test_dataset.map(lambda examples: tokenize_function(examples, tokenizer, args.dataset), batched=True)
-    # evaluate(args, global_model, tokenize_test_dataset)
-
+        
+    if args.save_model:
+        print(dash_line+"\nFinal Save The Best Model")
+        logging.info(dash_line+"\nFinal Save The Best Model")
+        best_model.save_pretrained(os.path.join(args.log_dir, "best_model"))
+        print(dash_line+"\nBest Model Saved")
+        logging.info(dash_line+"\nBest Model Saved")
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     # parser.add_argument("--method", choices=["centralized", "federated", "federated_foundation"], required=True)
+    parser.add_argument("--algo", type=str, default='raffm', choices=['vanilla','raffm'])
+    parser.add_argument("--save_model", action="store_true")
     parser.add_argument("--split_data", action="store_true")
     parser.add_argument("--num_clients", type=int, default=10)
     parser.add_argument("--k_shot", type=int, default=4)
@@ -462,6 +479,5 @@ if __name__ == "__main__":
     writer = SummaryWriter(args.log_dir)
     main(args)
 
-#python fl_qa_squad.py --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset squad --log_dir suqad/100 --model bert-base
-
+#python fl_qa_squad.py --algo vanilla --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset squad --log_dir log_squad_bert_large --model bert-large > baseline_squad_bertlarge_100.txt
 # sbatch --gres=gpu:1 --wrap="python3 fl_qa_squad.py --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset squad_v2 --log_dir suqad/100 --model bert-base > squad/100/console.log"

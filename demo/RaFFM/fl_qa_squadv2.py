@@ -235,6 +235,8 @@ def federated_learning(args, global_model, train_datasets, raw_datasets,tokenize
         batched=True,
         remove_columns=raw_datasets["validation"].column_names,
     )
+    best_model = copy.deepcopy(global_model.to('cpu'))
+    best_acc = 0
     for communication_round in range(args.num_rounds):
 
         lr = step_lr(args.learning_rate, communication_round, 5, 0.98)
@@ -250,12 +252,16 @@ def federated_learning(args, global_model, train_datasets, raw_datasets,tokenize
             tokenized_client_dataset = tokenized_client_datasets[client_id]
             print(f"Training client {client_id} in communication round {communication_round}")
 
-            if idx == 0:
+            if args.algo == 'raffm':
+
+                if idx == 0:
+                    local_model = copy.deepcopy(global_model)
+                    total_trainable_params,total_params, percentage = calculate_trainable_params(local_model)
+                else:
+                    local_model,total_trainable_params, total_params, percentage = gradient_masking_extraction(global_model, target_model_params_size=None) #Target model params size is None for randomly sample subnetwork
+            elif args.algo == 'vanilla':
                 local_model = copy.deepcopy(global_model)
                 total_trainable_params,total_params, percentage = calculate_trainable_params(local_model)
-            else:
-                local_model,total_trainable_params, total_params, percentage = gradient_masking_extraction(global_model, target_model_params_size=None) #Target model params size is None for randomly sample subnetwork
-            avg_trainable_params += total_trainable_params
             
 
             writer.add_scalar(str(client_id) + '/trainable_params', total_trainable_params, communication_round)
@@ -332,7 +338,11 @@ def federated_learning(args, global_model, train_datasets, raw_datasets,tokenize
         writer.add_scalar("EM/validation", res["HasAns_exact"], communication_round)
 
         logging.info(f"Global validation results: {str(res)}")
-    return global_model
+
+        if res["HasAns_f1"] > best_acc:
+            best_acc = res["HasAns_f1"]
+            best_model = copy.deepcopy(global_model.to('cpu'))
+    return global_model, best_model
 
 
 def main(args):
@@ -389,18 +399,23 @@ def main(args):
 
     
     
-    global_model = federated_learning(args, global_model,local_datasets, datasets,tokenizer)
+    global_model,best_model = federated_learning(args, global_model,local_datasets, datasets,tokenizer)
 
 
     print(dash_line+"\nFinal evaluation")
     logging.info(dash_line+"\nFinal evaluation")
-    # tokenize_test_dataset = test_dataset.map(lambda examples: tokenize_function(examples, tokenizer, args.dataset), batched=True)
-    # evaluate(args, global_model, tokenize_test_dataset)
-
+    if args.save_model:
+        print(dash_line+"\nFinal Save The Best Model")
+        logging.info(dash_line+"\nFinal Save The Best Model")
+        best_model.save_pretrained(os.path.join(args.log_dir, "best_model"))
+        print(dash_line+"\nBest Model Saved")
+        logging.info(dash_line+"\nBest Model Saved")
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     # parser.add_argument("--method", choices=["centralized", "federated", "federated_foundation"], required=True)
+    parser.add_argument("--algo", type=str, default='raffm', choices=['vanilla','raffm'])
+    parser.add_argument("--save_model", action="store_true")
     parser.add_argument("--split_data", action="store_true")
     parser.add_argument("--num_clients", type=int, default=10)
     parser.add_argument("--k_shot", type=int, default=4)
