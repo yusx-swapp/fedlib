@@ -263,6 +263,7 @@ def federated_learning(args, global_model, train_datasets, raw_datasets,tokenize
                 local_model = copy.deepcopy(global_model)
                 total_trainable_params,total_params, percentage = calculate_trainable_params(local_model)
             
+            avg_trainable_params += total_trainable_params
 
             writer.add_scalar(str(client_id) + '/trainable_params', total_trainable_params, communication_round)
             writer.add_scalar(str(client_id) + '/total_params', total_params, communication_round)

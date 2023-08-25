@@ -126,8 +126,8 @@ def federated_learning(args, global_model, tokenized_local_datasets, tokenize_va
             elif args.algo == 'vanilla':
                 local_model = copy.deepcopy(global_model)
                 total_trainable_params,total_params, percentage = calculate_trainable_params(local_model)
-
             avg_trainable_params += total_trainable_params
+
             writer.add_scalar(str(client_id) + '/trainable_params', total_trainable_params, communication_round)
             writer.add_scalar(str(client_id) + '/total_params', total_params, communication_round)
             print(f"Client {client_id} has {total_trainable_params} trainable parameters out of {total_params} parameters, which is {percentage}% in communication round {communication_round}")     

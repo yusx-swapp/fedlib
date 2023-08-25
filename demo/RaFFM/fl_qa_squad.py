@@ -285,12 +285,13 @@ def federated_learning(args, global_model, train_datasets, raw_datasets,tokenize
                 if idx == 0:
                     local_model = copy.deepcopy(global_model)
                     total_trainable_params,total_params, percentage = calculate_trainable_params(local_model)
+                    
                 else:
                     local_model,total_trainable_params, total_params, percentage = gradient_masking_extraction(global_model, target_model_params_size=None) #Target model params size is None for randomly sample subnetwork
             elif args.algo == 'vanilla':
                 local_model = copy.deepcopy(global_model)
                 total_trainable_params,total_params, percentage = calculate_trainable_params(local_model)
-            
+            avg_trainable_params += total_trainable_params
             
 
             writer.add_scalar(str(client_id) + '/trainable_params', total_trainable_params, communication_round)
@@ -369,8 +370,8 @@ def federated_learning(args, global_model, train_datasets, raw_datasets,tokenize
         res = list(res.values())
         logging.info(f"Global validation results: {res}")
         
-        if res["f1"] > best_acc:
-            best_acc = res["f1"]
+        if res[1] > best_acc:
+            best_acc = res[1]
             best_model = copy.deepcopy(global_model.to('cpu'))
         
     return global_model,best_model
@@ -479,5 +480,9 @@ if __name__ == "__main__":
     writer = SummaryWriter(args.log_dir)
     main(args)
 
-#python fl_qa_squad.py --algo vanilla --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset squad --log_dir log_squad_bert_large --model bert-large > baseline_squad_bertlarge_100.txt
+#python fl_qa_squad.py --algo vanilla --save_model --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --per_device_train_batch_size 12 --per_device_eval_batch_size 12 --dataset squad --log_dir log_squad_bert_large --model bert-large > baseline_squad_bertlarge_100.txt
+#python fl_qa_squad.py --save_model --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --per_device_train_batch_size 12 --per_device_eval_batch_size 12 --dataset squad --log_dir log_squad_bert_large --model bert-large > raffm_squad_bertlarge_100.txt
+
+
+
 # sbatch --gres=gpu:1 --wrap="python3 fl_qa_squad.py --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset squad_v2 --log_dir suqad/100 --model bert-base > squad/100/console.log"
