@@ -15,10 +15,11 @@ import logging
 import sys
 import copy
 import os
-from sklearn.metrics import accuracy_score
 from datasets import concatenate_datasets
 import logging
 from scipy.stats import pearsonr
+from sklearn.metrics import accuracy_score, matthews_corrcoef
+
 # from utils import *
 from utils.split_data import DatasetSplitter,k_shot_data
 from utils.adaptive import reordering_weights, gradient_masking_extraction, calculate_trainable_params
@@ -34,8 +35,12 @@ def compute_metrics(eval_pred, task):
     if task == "stsb":
         pearson_corr, _ = pearsonr(predictions.squeeze(), labels)
         return {"pearson_corr": pearson_corr}
+    elif task == 'cola':
+        probabilities_class_1 = predictions[:, 1]
+        # Convert continuous predictions to binary (0 or 1) for the CoLA task
+        binary_predictions = (probabilities_class_1 > 0.5).astype(int)
+        return {"matthews_corr": matthews_corrcoef(labels, binary_predictions)}
     else:
-    
         predictions = predictions.argmax(-1)
         return {"accuracy": accuracy_score(labels, predictions)}
     
@@ -78,6 +83,7 @@ def evaluate(args, global_model, tokenized_test_dataset):
 
     predictions = trainer.predict(tokenized_test_dataset)
     true_labels = tokenized_test_dataset["label"]
+    true_labels = np.array(tokenized_test_dataset["label"])
 
     global_model.to("cpu")  # Move the global model back to CPU memory after evaluation
 
@@ -86,6 +92,15 @@ def evaluate(args, global_model, tokenized_test_dataset):
         print(f"Pearson correlation: {pearson_corr}")
         logging.info(f"Pearson correlation: {pearson_corr}")
         return pearson_corr
+    elif args.dataset == 'cola':
+        probabilities_class_1 = predictions.predictions[:, 1]
+        binary_predictions = (probabilities_class_1 > 0.5).astype(int)
+        matthews_corr = matthews_corrcoef(true_labels, binary_predictions)
+        
+        print(f"matthews correlation: {matthews_corr}")
+        logging.info(f"matthews correlation: {matthews_corr}")
+        return matthews_corr
+        
     else:
         predicted_labels = predictions.predictions.argmax(-1)
         accuracy = accuracy_score(true_labels, predicted_labels)
@@ -303,22 +318,38 @@ def main(args):
         best_model.save_pretrained(os.path.join(args.log_dir, "best_model"))
 
 """
-python fl_glue.py --save_model --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset sst2 --per_device_train_batch_size 8 --per_device_eval_batch_size 8 --model bert-large --log_dir log_glue_bert_large/sst2 > raffm_bert_large_100_sst2.txt
-python fl_glue.py --save_model --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset mrpc --per_device_train_batch_size 8 --per_device_eval_batch_size 8 --model bert-large --log_dir log_glue_bert_large/mrpc > raffm_bert_large_100_mrpc.txt
-python fl_glue.py --save_model --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset mnli --per_device_train_batch_size 8 --per_device_eval_batch_size 8 --model bert-large --log_dir log_glue_bert_large/mnli > raffm_bert_large_100_mnli.txt
-python fl_glue.py --save_model --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset qqp --per_device_train_batch_size 8 --per_device_eval_batch_size 8 --model bert-large --log_dir log_glue_bert_large/qqp > raffm_bert_large_100_qqp.txt
-python fl_glue.py --save_model --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset qnli --per_device_train_batch_size 8 --per_device_eval_batch_size 8 --model bert-large --log_dir log_glue_bert_large/qnli > raffm_bert_large_100_qnli.txt
-python fl_glue.py --save_model --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset rte --per_device_train_batch_size 8 --per_device_eval_batch_size 8 --model bert-large --log_dir log_glue_bert_large/rte > raffm_bert_large_100_rte.txt
-python fl_glue.py --save_model --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset cola --per_device_train_batch_size 8 --per_device_eval_batch_size 8 --model bert-large --log_dir log_glue_bert_large/cola > raffm_bert_large_100_cola.txt
-*python fl_glue.py --save_model --split_data --num_clients 50 --num_rounds 100 --num_local_epochs 3 --dataset stsb --per_device_train_batch_size 8 --per_device_eval_batch_size 8 --model bert-large --log_dir log_glue_bert_large/stsb > raffm_bert_large_100_stsb.txt
-
--python fl_glue.py --save_model --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset stsb --per_device_train_batch_size 8 --per_device_eval_batch_size 8 --model bert-large --log_dir log_glue_bert_large/stsb > raffm_bert_large_100_stsb.txt
 
 baseline running command:
-python fl_glue.py --save_model --algo vanilla --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset sst2 --per_device_train_batch_size 8 --per_device_eval_batch_size 8 --model bert-large --log_dir log_glue_bert_large/baseline/sst2 > baseline_bert_large_100_sst2.txt
+python fl_glue.py --save_model --algo vanilla --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset mnli --per_device_train_batch_size 24 --per_device_eval_batch_size 24 --model bert-base --log_dir log_glue/baseline/mnli > baseline_bert_base_100_mnli.txt 
+
+python fl_glue.py --save_model --algo vanilla --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset sst2 --per_device_train_batch_size 24 --per_device_eval_batch_size 24 --model roberta --log_dir log_glue_roberta/baseline/sst2 > baseline_roberta_100_sst2.txt
+python fl_glue.py --save_model --algo vanilla --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset sst2 --per_device_train_batch_size 48 --per_device_eval_batch_size 48 --model distilbert --log_dir log_glue_distilbert/baseline/sst2 > baseline_distilbert_100_sst2.txt
+
+python fl_glue.py --save_model --algo vanilla --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset rte --per_device_train_batch_size 24 --per_device_eval_batch_size 24 --model roberta --log_dir log_glue_roberta/baseline/rte > baseline_roberta_100_rte.txt
+python fl_glue.py --save_model --algo vanilla --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset rte --per_device_train_batch_size 48 --per_device_eval_batch_size 48 --model distilbert --log_dir log_glue_distilbert/baseline/rte > baseline_distilbert_100_rte.txt
+
+python fl_glue.py --save_model --algo vanilla --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset mrpc --per_device_train_batch_size 24 --per_device_eval_batch_size 24 --model roberta --log_dir log_glue_roberta/baseline/mrpc > baseline_roberta_100_mrpc.txt
+python fl_glue.py --save_model --algo vanilla --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset mrpc --per_device_train_batch_size 48 --per_device_eval_batch_size 48 --model distilbert --log_dir log_glue_distilbert/baseline/mrpc > baseline_distilbert_100_mrpc.txt
+
+python fl_glue.py --save_model --algo vanilla --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset cola --per_device_train_batch_size 24 --per_device_eval_batch_size 24 --model roberta --log_dir log_glue_roberta/baseline/cola > baseline_roberta_100_cola.txt
+python fl_glue.py --save_model --algo vanilla --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset cola --per_device_train_batch_size 48 --per_device_eval_batch_size 48 --model distilbert --log_dir log_glue_distilbert/baseline/cola > baseline_distilbert_100_cola.txt
+
+python fl_glue.py --save_model --algo vanilla --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset stsb --per_device_train_batch_size 24 --per_device_eval_batch_size 24 --model roberta --log_dir log_glue_roberta/baseline/stsb > baseline_roberta_100_stsb.txt
+python fl_glue.py --save_model --algo vanilla --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset stsb --per_device_train_batch_size 48 --per_device_eval_batch_size 48 --model distilbert --log_dir log_glue_distilbert/baseline/stsb > baseline_distilbert_100_stsb.txt
+
+python fl_glue.py --save_model --algo vanilla --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset qqp --per_device_train_batch_size 24 --per_device_eval_batch_size 24 --model roberta --log_dir log_glue_roberta/baseline/qqp > baseline_roberta_100_qqp.txt
+python fl_glue.py --save_model --algo vanilla --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset qqp --per_device_train_batch_size 48 --per_device_eval_batch_size 48 --model distilbert --log_dir log_glue_distilbert/baseline/qqp > baseline_distilbert_100_qqp.txt
+
+python fl_glue.py --save_model --algo vanilla --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset qnli --per_device_train_batch_size 24 --per_device_eval_batch_size 24 --model roberta --log_dir log_glue_roberta/baseline/qnli > baseline_roberta_100_qnli.txt
+python fl_glue.py --save_model --algo vanilla --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset qnli --per_device_train_batch_size 48 --per_device_eval_batch_size 48 --model distilbert --log_dir log_glue_distilbert/baseline/qnli > baseline_distilbert_100_qnli.txt
+
+python fl_glue.py --save_model --algo vanilla --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset mnli --per_device_train_batch_size 24 --per_device_eval_batch_size 24 --model roberta --log_dir log_glue_roberta/baseline/mnli > baseline_roberta_100_mnli.txt
+python fl_glue.py --save_model --algo vanilla --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset mnli --per_device_train_batch_size 48 --per_device_eval_batch_size 48 --model distilbert --log_dir log_glue_distilbert/baseline/mnli > baseline_distilbert_100_mnli.txt
+
+
 python fl_glue.py --save_model --algo vanilla --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset mrpc --per_device_train_batch_size 8 --per_device_eval_batch_size 8 --model bert-large --log_dir log_glue_bert_large/baseline/mrpc > baseline_bert_large_100_mrpc.txt
 python fl_glue.py --save_model --algo vanilla --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset mnli --per_device_train_batch_size 8 --per_device_eval_batch_size 8 --model bert-large --log_dir log_glue_bert_large/baseline/mnli > baseline_bert_large_100_mnli.txt
-python fl_glue.py --save_model --algo vanilla --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset qqp --per_device_train_batch_size 8 --per_device_eval_batch_size 8 --model bert-large --log_dir log_glue_bert_large/baseline/qqp > baseline_bert_large_100_qqp.txt
+python fl_glue.py --save_model --algo vanilla --split_data --num_clients 100 --num_rounds 20 --num_local_epochs 3 --dataset qqp --per_device_train_batch_size 8 --per_device_eval_batch_size 8 --model bert-large --log_dir log_glue_bert_large/baseline/qqp > baseline_bert_large_100_qqp.txt
 python fl_glue.py --save_model --algo vanilla --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset qnli --per_device_train_batch_size 8 --per_device_eval_batch_size 8 --model bert-large --log_dir log_glue_bert_large/baseline/qnli > baseline_bert_large_100_qnli.txt
 *python fl_glue.py --save_model --algo vanilla --split_data --num_clients 50 --num_rounds 100 --num_local_epochs 3 --dataset rte --per_device_train_batch_size 8 --per_device_eval_batch_size 8 --model bert-large --log_dir log_glue_bert_large/baseline/rte > baseline_bert_large_100_rte.txt
 *python fl_glue.py --save_model --algo vanilla --split_data --num_clients 50 --num_rounds 100 --num_local_epochs 3 --dataset cola --per_device_train_batch_size 8 --per_device_eval_batch_size 8 --model bert-large --log_dir log_glue_bert_large/baseline/cola > baseline_bert_large_100_cola.txt

@@ -98,9 +98,11 @@ def compute_metrics(start_logits, end_logits, features, examples):
     return metric.compute(predictions=predicted_answers, references=theoretical_answers)
 
 def tokenize_function(examples,tokenizer):
+    examples['question'] = [q.lstrip() for q in examples['question']]
     return tokenizer(examples['question'], examples['context'], truncation=True)
 
 def prepare_train_features(examples,tokenizer):
+    examples['question'] = [q.lstrip() for q in examples['question']]
     # Tokenize our examples with truncation and padding, but keep the overflows using a stride. This results
     # in one example possible giving several features when a context is long, each of those features having a
     # context that overlaps a bit the context of the previous feature.
@@ -174,6 +176,7 @@ def prepare_train_features(examples,tokenizer):
 
 
 def preprocess_validation_examples(examples,tokenizer):
+    examples['question'] = [q.lstrip() for q in examples['question']]
     # Tokenize our examples with truncation and maybe padding, but keep the overflows using a stride. This results
     # in one example possible giving several features when a context is long, each of those features having a
     # context that overlaps a bit the context of the previous feature.
@@ -354,7 +357,7 @@ def main(args):
     elif args.model == "roberta":
         # raise NotImplementedError
         model_name = "roberta-base"
-        tokenizer = RobertaTokenizerFast.from_pretrained(model_name)
+        tokenizer = AutoTokenizer.from_pretrained(model_name,use_fast = True)
         global_model = RobertaForQuestionAnswering.from_pretrained(model_name)
     elif args.model == "t5":
         raise NotImplementedError
@@ -444,6 +447,7 @@ if __name__ == "__main__":
     writer = SummaryWriter(args.log_dir)
     main(args)
 
-#python fl_qa_squad.py --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset squad --log_dir suqad/100 --model bert-base
-
+#python fl_qa_squadv2.py --algo vanilla --save_model --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --per_device_train_batch_size 24 --per_device_eval_batch_size 24 --dataset squad_v2 --log_dir log_squadv2_roberta --model roberta > baseline_squadv2_roberta_100.txt
+#python fl_qa_squadv2.py --save_model --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --per_device_train_batch_size 12 --per_device_eval_batch_size 12 --dataset squad_v2 --log_dir log_squadv2_bert_large --model bert-large > raffm_squadv2_bertlarge_100.txt
 # sbatch --gres=gpu:1 --wrap="python3 fl_qa_squadv2.py --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset squad_v2 --log_dir suqadv2/100 --model bert-base --per_device_train_batch_size 16 --per_device_eval_batch_size 16"
+

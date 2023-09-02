@@ -480,7 +480,7 @@ if __name__ == "__main__":
     writer = SummaryWriter(args.log_dir)
     main(args)
 
-#python fl_qa_squad.py --algo vanilla --save_model --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --per_device_train_batch_size 12 --per_device_eval_batch_size 12 --dataset squad --log_dir log_squad_bert_large --model bert-large > baseline_squad_bertlarge_100.txt
+#python fl_qa_squad.py --algo vanilla --save_model --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --per_device_train_batch_size 24 --per_device_eval_batch_size 24 --dataset squad --log_dir log_squad_roberta --model roberta > baseline_roberta_100.txt
 #python fl_qa_squad.py --save_model --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --per_device_train_batch_size 12 --per_device_eval_batch_size 12 --dataset squad --log_dir log_squad_bert_large --model bert-large > raffm_squad_bertlarge_100.txt
 
 
