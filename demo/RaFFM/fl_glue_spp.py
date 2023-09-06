@@ -404,10 +404,10 @@ if __name__ == "__main__":
 """
 
 SPP experiment
-python fl_glue.py --spp --algo vanilla --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset cola --per_device_train_batch_size 48 --per_device_eval_batch_size 48 --model bert-base --log_dir log_glue_distilbert/baseline/cola > baseline_distilbert_100_cola.txt
+python fl_glue_spp.py --spp --algo vanilla --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset cola --per_device_train_batch_size 48 --per_device_eval_batch_size 48 --model bert-base --log_dir log_glue_distilbert/baseline/cola > baseline_distilbert_100_cola.txt
 
 
-python fl_glue.py --algo vanilla --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset cola --per_device_train_batch_size 48 --per_device_eval_batch_size 48 --model bert-base --log_dir log_glue_distilbert/baseline/cola > baseline_distilbert_100_cola.txt
+python fl_glue_spp.py --algo vanilla --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset cola --per_device_train_batch_size 48 --per_device_eval_batch_size 48 --model bert-base --log_dir log_glue_distilbert/baseline/cola > baseline_distilbert_100_cola.txt
 
 
 """
