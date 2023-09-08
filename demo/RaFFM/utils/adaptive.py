@@ -118,6 +118,92 @@ def subnetwork_extraction(model, target_model_params_size):
         else:
             return subnetwork
         
+def distillbert_subnetwork(model, target_model_params_size=None):
+    millions = 1000000
+    possible_channels = [256,384,512,640,728,1024,2048]
+    dense_channels = [512,728,1024,2048,3072]
+    while True:
+        total_trainable_params = 0
+        total_params = 0
+        random.seed(time.time())
+        subnetwork = copy.deepcopy(model)
+        previous_channels = 0
+        for name, module in subnetwork.named_modules():
+
+                    
+            if hasattr(module, 'weight') and isinstance(module.weight, Parameter) and module.weight.requires_grad:
+                total_params += torch.prod(torch.tensor(module.weight.size())).item()
+                original_channels = module.weight.size(0)
+                if "encoder" not in name:
+                    total_trainable_params += torch.prod(torch.tensor(module.weight.size())).item()
+                    continue
+                
+                
+                elif name.endswith('out_lin'):
+                    dense_sampled_channels = random.choice(dense_channels)
+                    dense_sampled_channels = min(dense_sampled_channels, original_channels)
+                    
+                    def mask_grad(grad):
+                        if grad is None:
+                            return None
+                        # Create a mask with the same shape as the gradient
+                        mask = torch.zeros_like(grad).to(grad.device)
+                        # Set the first dense_sampled_channels rows to ones
+                        mask.narrow(0, 0, dense_sampled_channels).fill_(1)
+                        return grad * mask
+
+                    module.weight.register_hook(mask_grad)
+                    # You can still store the mask in the module if needed, using the original weight shape
+                    mask_for_module = torch.zeros_like(module.weight).to('cuda')
+                    mask_for_module[:dense_sampled_channels, :] = 1
+                    # module.weight_mask = mask_for_module
+                    trainable_params_in_module = torch.sum(mask_for_module).item()
+                    total_trainable_params += trainable_params_in_module
+                
+            if 'MultiHeadSelfAttention' in str(type(module)):
+                original_channels = module.q_lin.weight.size(0)
+                sampled_channels = random.choice(possible_channels)
+                sampled_channels = min(sampled_channels, original_channels)
+                mask = torch.cat([torch.ones(sampled_channels), torch.zeros(original_channels - sampled_channels)]).to('cuda')
+                
+                
+                module.q_lin.weight.register_hook(lambda grad: grad * mask if grad is not None else None)
+                module.k_lin.weight.register_hook(lambda grad: grad * mask if grad is not None else None)
+                trainable_params_in_module = torch.sum(mask).item()
+                total_trainable_params += trainable_params_in_module
+
+
+                module.q_lin.weight.data
+
+
+
+                    
+
+        
+        total_trainable_params = total_trainable_params / millions
+        total_params = total_params / millions
+        percentage = total_trainable_params / total_params
+        
+        if target_model_params_size is None:
+            return subnetwork, total_trainable_params, total_params, percentage
+        
+
+        # Evaluate current network FLOPs
+        # trainable_model_params, all_model_params, percentage = calculate_trainable_params(subnetwork)
+        
+        if target_model_params_size>0 and target_model_params_size<1:
+            if percentage > target_model_params_size:
+                continue
+            else:
+                return subnetwork, total_trainable_params, total_params, percentage
+        else:
+            if total_trainable_params > target_model_params_size:
+                continue
+            else:
+                return subnetwork, total_trainable_params, total_params, percentage
+
+
+
 def gradient_masking_extraction(model, target_model_params_size=None):
     """
     Extract a subnetwork from the original network based on the target model parameters size
@@ -127,6 +213,8 @@ def gradient_masking_extraction(model, target_model_params_size=None):
     Returns:
         subnetwork: the extracted subnetwork
     """
+    if 'distilbert' in model.config.name_or_path.lower():
+        return distillbert_subnetwork(model, target_model_params_size)
     millions = 1000000
     possible_channels = [256,384,512,640,728,1024,2048]
     dense_channels = [512,728,1024,2048,3072]
