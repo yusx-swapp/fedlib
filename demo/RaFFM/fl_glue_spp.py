@@ -23,7 +23,7 @@ from sklearn.metrics import accuracy_score, matthews_corrcoef
 # from utils import *
 from utils.split_data import DatasetSplitter,k_shot_data
 from utils.adaptive import calculate_trainable_params,gradient_masking_extraction
-from utils import salient_parameter_prioritization
+from utils import salient_parameter_prioritization, salient_submodel_extraction
 
 random_seed = 123
 
@@ -127,6 +127,10 @@ def federated_learning(args, global_model, tokenized_local_datasets, tokenize_va
         np.random.seed(int(time.time()))  # Set the seed to the current time
         client_indices = np.random.choice(len(tokenized_local_datasets), size=int(0.1*len(tokenized_local_datasets)), replace=False)
         avg_trainable_params = 0
+        
+        if args.spp:
+            global_model = salient_parameter_prioritization(global_model)
+
         for idx, client_id in enumerate(client_indices):
         # for client_id, client_dataset in enumerate(train_datasets):
             tokenized_client_dataset = tokenized_local_datasets[client_id]
@@ -138,7 +142,7 @@ def federated_learning(args, global_model, tokenized_local_datasets, tokenize_va
                     local_model = copy.deepcopy(global_model)
                     total_trainable_params,total_params, percentage = calculate_trainable_params(local_model)
                 else:
-                    local_model,total_trainable_params, total_params, percentage = gradient_masking_extraction(global_model, target_model_params_size=None) #Target model params size is None for randomly sample subnetwork
+                    local_model,total_trainable_params, total_params, percentage = salient_submodel_extraction(global_model, target_model_params_size=None) #Target model params size is None for randomly sample subnetwork
             elif args.algo == 'vanilla':
                 local_model = copy.deepcopy(global_model)
                 total_trainable_params,total_params, percentage = calculate_trainable_params(local_model)
@@ -177,6 +181,11 @@ def federated_learning(args, global_model, tokenized_local_datasets, tokenize_va
 
             print("local model training finished")
             logging.info(f"local model training finished")
+
+            if args.eval_lm:
+                res = evaluate(args, local_model,tokenize_val_dataset)
+                print(f"client {client_id} local model val accuracy is {res}")
+                logging.info(f"client {client_id} local model val accuracy is {res}")
             local_model.to("cpu")  # Move the local model to CPU memory
             local_models.append(local_model)
 
@@ -261,8 +270,6 @@ def main(args):
         global_model = BertForSequenceClassification.from_pretrained(model_name, num_labels=num_classes[args.dataset])
 
 
-    if args.spp:
-        global_model = salient_parameter_prioritization(global_model)
 
 
     if args.dataset in ["sst2", "mrpc", "qnli", "rte", "cola"]:
@@ -373,6 +380,7 @@ if __name__ == "__main__":
     # parser.add_argument("--method", choices=["centralized", "federated", "federated_foundation"], required=True)
     parser.add_argument("--algo", type=str, default='raffm', choices=['vanilla','raffm'])
     parser.add_argument("--spp", action="store_true", help="salient parameter prioritization")
+    parser.add_argument("--eval_lm", action="store_true", help="evaluate local models")
     parser.add_argument("--split_data", action="store_true")
     parser.add_argument("--num_clients", type=int, default=100)
     parser.add_argument("--k_shot", type=int, default=4)
@@ -404,10 +412,27 @@ if __name__ == "__main__":
 """
 
 SPP experiment
-python fl_glue_spp.py --spp --algo vanilla --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset cola --per_device_train_batch_size 48 --per_device_eval_batch_size 48 --model bert-base --log_dir log_glue_distilbert/baseline/cola > baseline_distilbert_100_cola.txt
+python fl_glue_spp.py --spp --algo vanilla --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset cola --per_device_train_batch_size 24 --per_device_eval_batch_size 24 --model bert-base --log_dir log_glue/spp/cola > cola_spp_baseline_bertbase_100.txt
+
+python fl_glue_spp.py --spp --algo raffm --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset qqp --per_device_train_batch_size 24 --per_device_eval_batch_size 24 --model distilbert --log_dir log_glue/spp/qqp > raffm_distilbert_100_qqp.txt
+python fl_glue_spp.py --spp --algo raffm --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset mnli --per_device_train_batch_size 24 --per_device_eval_batch_size 24 --model distilbert --log_dir log_glue/spp/mnli > raffm_distilbert_100_mnli.txt
+python fl_glue_spp.py --eval_lm --spp --algo raffm --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset sst2 --per_device_train_batch_size 24 --per_device_eval_batch_size 24 --model distilbert --log_dir log_glue/spp/sst2 > raffm_distilbert_100_sst2.txt
+python fl_glue_spp.py --eval_lm --spp --algo raffm --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset stsb --per_device_train_batch_size 24 --per_device_eval_batch_size 24 --model distilbert --log_dir log_glue/spp/stsb > raffm_distilbert_100_stsb.txt
+python fl_glue_spp.py --eval_lm --spp --algo raffm --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset qnli --per_device_train_batch_size 24 --per_device_eval_batch_size 24 --model distilbert --log_dir log_glue/spp/qnli > raffm_distilbert_100_qnli.txt
+python fl_glue_spp.py --eval_lm --spp --algo raffm --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset mrpc --per_device_train_batch_size 24 --per_device_eval_batch_size 24 --model distilbert --log_dir log_glue/spp/mrpc > raffm_distilbert_100_mrpc.txt
+python fl_glue_spp.py --eval_lm --spp --algo raffm --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset cola --per_device_train_batch_size 24 --per_device_eval_batch_size 24 --model distilbert --log_dir log_glue/spp/cola > raffm_distilbert_100_cola.txt
+
+python fl_glue_spp.py --eval_lm --spp --algo raffm --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset mrpc --per_device_train_batch_size 8 --per_device_eval_batch_size 8 --model roberta --log_dir log_glue/roberta/mrpc > raffm_roberta_100_mrpc.txt
+python fl_glue_spp.py --eval_lm --spp --algo raffm --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset qqp --per_device_train_batch_size 8 --per_device_eval_batch_size 8 --model roberta --log_dir log_glue/roberta/qqp > raffm_roberta_100_qqp.txt
+python fl_glue_spp.py --eval_lm --spp --algo raffm --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset mnli --per_device_train_batch_size 8 --per_device_eval_batch_size 8 --model roberta --log_dir log_glue/roberta/mnli > raffm_roberta_100_mnli.txt
+
+python fl_glue_spp.py --eval_lm --spp --algo raffm --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset qnli --per_device_train_batch_size 12 --per_device_eval_batch_size 12 --model roberta --log_dir log_glue/roberta/qnli > raffm_roberta_100_qnli.txt
+python fl_glue_spp.py --eval_lm --spp --algo raffm --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset stsb --per_device_train_batch_size 12 --per_device_eval_batch_size 12 --model roberta --log_dir log_glue/roberta/stsb > raffm_roberta_100_stsb.txt
+python fl_glue_spp.py --eval_lm --spp --algo raffm --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset sst2 --per_device_train_batch_size 12 --per_device_eval_batch_size 12 --model roberta --log_dir log_glue/roberta/sst2 > raffm_roberta_100_sst2.txt
+python fl_glue_spp.py --eval_lm --spp --algo raffm --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset rte --per_device_train_batch_size 12 --per_device_eval_batch_size 12 --model roberta --log_dir log_glue/roberta/rte > raffm_roberta_100_rte.txt
+python fl_glue_spp.py --eval_lm --spp --algo raffm --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset cola --per_device_train_batch_size 12 --per_device_eval_batch_size 12 --model roberta --log_dir log_glue/roberta/cola > raffm_roberta_100_cola.txt
 
 
-python fl_glue_spp.py --algo vanilla --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset cola --per_device_train_batch_size 48 --per_device_eval_batch_size 48 --model bert-base --log_dir log_glue_distilbert/baseline/cola > baseline_distilbert_100_cola.txt
-
+python fl_glue_spp.py --spp --algo raffm --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset rte --per_device_train_batch_size 48 --per_device_eval_batch_size 48 --model distilbert --log_dir log_glue/spp/rte > raffm_distilbert_100_rte.txt
 
 """

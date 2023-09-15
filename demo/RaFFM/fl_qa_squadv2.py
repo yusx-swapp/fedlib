@@ -447,7 +447,10 @@ if __name__ == "__main__":
     writer = SummaryWriter(args.log_dir)
     main(args)
 
-#python fl_qa_squadv2.py --algo vanilla --save_model --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --per_device_train_batch_size 24 --per_device_eval_batch_size 24 --dataset squad_v2 --log_dir log_squadv2_roberta --model roberta > baseline_squadv2_roberta_100.txt
+#python fl_qa_squadv2.py --algo vanilla --save_model --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --per_device_train_batch_size 24 --per_device_eval_batch_size 24 --dataset squad_v2 --log_dir log_squadv2_roberta --model roberta > raffm_squadv2_roberta_100.txt
+#python fl_qa_squadv2.py --save_model --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --per_device_train_batch_size 24 --per_device_eval_batch_size 24 --dataset squad_v2 --log_dir log_squadv2_distilbert --model distilbert > raffm_squadv2_distilbert_100.txt
+
+
 #python fl_qa_squadv2.py --save_model --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --per_device_train_batch_size 12 --per_device_eval_batch_size 12 --dataset squad_v2 --log_dir log_squadv2_bert_large --model bert-large > raffm_squadv2_bertlarge_100.txt
 # sbatch --gres=gpu:1 --wrap="python3 fl_qa_squadv2.py --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset squad_v2 --log_dir suqadv2/100 --model bert-base --per_device_train_batch_size 16 --per_device_eval_batch_size 16"
 

@@ -118,6 +118,43 @@ def subnetwork_extraction(model, target_model_params_size):
         else:
             return subnetwork
         
+def distillbert_subnetwork_extraction(model):
+    """
+    Extract a subnetwork from the original network based on the target model parameters size
+    Args:
+        model: the original model
+        target_model_params_size: the target model parameters size
+    Returns:
+        subnetwork: the extracted subnetwork
+    """
+
+    possible_channels = [32,64,128,256,512,768,1024,2048,3072]
+
+
+    subnetwork = copy.deepcopy(model)
+    previous_channels = 0
+    for name, module in subnetwork.named_modules():
+
+                
+
+            
+        if 'MultiHeadSelfAttention' in str(type(module)):
+            original_channels = module.q_lin.weight.size(0)
+            sampled_channels = random.choice(possible_channels)
+            sampled_channels = min(sampled_channels, original_channels)
+            chanel_idx = [ i for i in range(0,sampled_channels)]
+            module.q_lin.weight.data[sampled_channels:,:] = 0
+            module.k_lin.weight.data[sampled_channels:,:] = 0
+
+            if module.q_lin.bias is not None:
+                module.q_lin.bias.data[sampled_channels:] = 0
+
+            if module.k_lin.bias is not None:
+                module.k_lin.bias.data[sampled_channels:] = 0
+        
+    
+    return subnetwork
+        
 def distillbert_subnetwork(model, target_model_params_size=None):
     millions = 1000000
     possible_channels = [256,384,512,640,728,1024,2048]
