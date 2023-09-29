@@ -2,6 +2,12 @@ from .spp import *
 from .sme import *
 from .tokenize import tokenize_function
 from .split_data import DatasetSplitter
+from .converge import EarlyStopping
+
+def step_lr(initial_lr, epoch, decay_step, decay_rate):
+    return initial_lr * (decay_rate ** (epoch // decay_step))
+
+
 def print_number_of_trainable_model_parameters(model):
     trainable_model_params = 0
     all_model_params = 0

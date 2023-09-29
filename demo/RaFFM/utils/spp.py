@@ -95,22 +95,8 @@ def l2_norm(query, key,num_attn_head=12):
 
     return torch.cat(all_ranked_indices)
 
-
-def salient_parameter_prioritization(org_model, metric = l1_norm):
-    """
-    Prioritize the saliant weights of the query and key matrices in all multi-head attention layers of BERT based on a given metric.
-    
-    Args:
-    - org_model (torch.nn.Module): The original BERT model.
-    - metric (function): A function that takes in query and key matrices and returns a permutation index.
-
-    Returns:
-    - model (torch.nn.Module): The model with permuted weights.
-    """
-    model = copy.deepcopy(org_model)
+def bert_spp_handler(model, metric):
     num_attn_head = model.config.num_attention_heads
-    
-    # Iterate over all modules in the model
     for name, module in model.named_modules():
         # Check if the module is BertSelfAttention
         if "BertSelfAttention" in str(type(module)):
@@ -131,7 +117,12 @@ def salient_parameter_prioritization(org_model, metric = l1_norm):
             if module.key.bias is not None:
                 module.key.bias.data = module.key.bias.data[perm]
 
-        elif "RobertaSelfAttention" in str(type(module)):
+def roberta_spp_handler(model, metric):
+    num_attn_head = model.config.num_attention_heads
+    for name, module in model.named_modules():
+        # Check if the module is BertSelfAttention
+
+        if "RobertaSelfAttention" in str(type(module)):
                         # Get permutation using the metric function
             perm = metric(module.query.weight.data, module.key.weight.data,num_attn_head=num_attn_head)
             
@@ -148,8 +139,13 @@ def salient_parameter_prioritization(org_model, metric = l1_norm):
             module.key.weight.data = module.key.weight.data[perm, :]
             if module.key.bias is not None:
                 module.key.bias.data = module.key.bias.data[perm]
+def distilbert_spp_handler(model, metric):
+    num_attn_head = model.config.num_attention_heads
+    for name, module in model.named_modules():
+        # Check if the module is BertSelfAttention
 
-        elif "MultiHeadSelfAttention" in str(type(module)):
+
+        if "MultiHeadSelfAttention" in str(type(module)):
                                     # Get permutation using the metric function
             perm = metric(module.q_lin.weight.data, module.k_lin.weight.data,num_attn_head=num_attn_head)
             
@@ -166,6 +162,109 @@ def salient_parameter_prioritization(org_model, metric = l1_norm):
             module.k_lin.weight.data = module.k_lin.weight.data[perm, :]
             if module.k_lin.bias is not None:
                 module.k_lin.bias.data = module.k_lin.bias.data[perm]
+def t5_spp_handler(model, metric):
+    num_attn_head = model.config.num_attention_heads
+    for name, module in model.named_modules():
+        # Check if the module is BertSelfAttention
+
+        if "T5Attention" in str(type(module)):
+                        # Get permutation using the metric function
+            perm = metric(module.q.weight.data, module.k.weight.data,num_attn_head=num_attn_head)
+            
+            # Ensure the permutation is in the correct format
+            assert isinstance(perm, torch.Tensor), "The metric function must return a torch.Tensor."
+            assert perm.shape[0] == module.q.weight.shape[0], "Invalid permutation size."
+
+            # Permute the query weights
+            module.q.weight.data = module.q.weight.data[perm, :]
+            if module.q.bias is not None:
+                module.q.bias.data = module.q.bias.data[perm]
+
+            # Permute the key weights
+            module.k.weight.data = module.k.weight.data[perm, :]
+            if module.k.bias is not None:
+                module.k.bias.data = module.k.bias.data[perm]
+        
+def vit_spp_handler(model, metric):
+    num_attn_head = model.config.num_attention_heads
+    for name, module in model.named_modules():
+        # Check if the module is BertSelfAttention
+
+        if "ViTSelfAttention" in str(type(module)):
+                        # Get permutation using the metric function
+            perm = metric(module.query.weight.data, module.key.weight.data,num_attn_head=num_attn_head)
+            
+            # Ensure the permutation is in the correct format
+            assert isinstance(perm, torch.Tensor), "The metric function must return a torch.Tensor."
+            assert perm.shape[0] == module.query.weight.shape[0], "Invalid permutation size."
+
+            # Permute the query weights
+            module.query.weight.data = module.query.weight.data[perm, :]
+            if module.query.bias is not None:
+                module.query.bias.data = module.query.bias.data[perm]
+
+            # Permute the key weights
+            module.key.weight.data = module.key.weight.data[perm, :]
+            if module.key.bias is not None:
+                module.key.bias.data = module.key.bias.data[perm]
+        
+def llama_spp_handler(model,metric):
+    num_attn_head = model.config.num_attention_heads
+    
+    if model.config.num_attention_heads != model.config.num_key_value_heads:
+        # see num_key_value_heads arguments documentation here: \
+        # https://huggingface.co/docs/transformers/main/model_doc/llama2#transformers.LlamaConfig.num_key_value_heads
+        raise NotImplementedError("Current only support llama 7B with MHA, not support the group attention")
+    
+    for name, module in model.named_modules():
+        # Check if the module is BertSelfAttention
+
+        if "LlamaAttention" in str(type(module)):
+                        # Get permutation using the metric function
+            perm = metric(module.q_proj.weight.data, module.k_proj.weight.data,num_attn_head=num_attn_head)
+            
+            # Ensure the permutation is in the correct format
+            assert isinstance(perm, torch.Tensor), "The metric function must return a torch.Tensor."
+            assert perm.shape[0] == module.q_proj.weight.shape[0], "Invalid permutation size."
+
+            # Permute the query weights
+            module.q_proj.weight.data = module.q_proj.weight.data[perm, :]
+            if module.q_proj.bias is not None:
+                module.q_proj.bias.data = module.q_proj.bias.data[perm]
+
+            # Permute the key weights
+            module.k_proj.weight.data = module.k_proj.weight.data[perm, :]
+            if module.k_proj.bias is not None:
+                module.k_proj.bias.data = module.k_proj.bias.data[perm]
+def salient_parameter_prioritization(org_model, metric = l1_norm):
+    """
+    Prioritize the saliant weights of the query and key matrices in all multi-head attention layers of BERT based on a given metric.
+    
+    Args:
+    - org_model (torch.nn.Module): The original BERT model.
+    - metric (function): A function that takes in query and key matrices and returns a permutation index.
+
+    Returns:
+    - model (torch.nn.Module): The model with permuted weights.
+    """
+    model = copy.deepcopy(org_model)
+    
+    # Iterate over all modules in the model
+    if 'distilbert' == model.config.model_type.lower():
+        distilbert_spp_handler(model,metric)        
+
+    elif 'roberta' == model.config.model_type.lower():
+        roberta_spp_handler(model,metric)      
+    elif 'bert' == model.config.model_type.lower():
+        bert_spp_handler(model,metric)
+    elif 'llama' == model.config.model_type.lower():
+        llama_spp_handler(model,metric) 
+    elif 't5' == model.config.model_type.lower():
+        t5_spp_handler(model,metric)
+    elif 'vit' == model.config.model_type.lower():
+        vit_spp_handler(model,metric)
+    else:
+        raise NotImplementedError(f"not support for the model type: {model.config.model_type}")
 
     return model
 

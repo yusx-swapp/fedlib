@@ -8,6 +8,10 @@ from transformers import (
     T5Tokenizer, 
     AutoTokenizer, 
     RobertaForQuestionAnswering,
+    AutoModelForSeq2SeqLM, 
+    GenerationConfig,
+    BertForQuestionAnswering,
+    DistilBertForQuestionAnswering
     )
 from datasets import load_dataset
 import logging
@@ -388,9 +392,10 @@ def main(args):
         tokenizer = RobertaTokenizerFast.from_pretrained(model_name)
         global_model = RobertaForQuestionAnswering.from_pretrained(model_name)
     elif args.model == "t5":
-        raise NotImplementedError
-        model_name = "t5-small"  # You can also use "t5-base" or other T5 variants
-        tokenizer = T5Tokenizer.from_pretrained(model_name)
+        model_name='google/flan-t5-small'
+
+        global_model = AutoModelForSeq2SeqLM.from_pretrained(model_name, torch_dtype=torch.bfloat16)
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
         
     elif args.model == "bert-base":
         model_name = 'bert-base-uncased'
@@ -465,6 +470,8 @@ if __name__ == "__main__":
     parser.add_argument("--log_dir", type=str, default="centralized/4")
     parser.add_argument("--learning_rate", type=float, default=2e-5)
     parser.add_argument("--model", type=str, default="bert-base", choices=["distilbert", "roberta", "t5", "bert-base", "bert-large"], help="Choose between 'distilbert', 'roberta', 't5', 'bert-base', 'bert-large'")
+    parser.add_argument("--eval_lm", action="store_true", help="evaluate local models")
+
     args = parser.parse_args()
     
     os.makedirs(args.log_dir, exist_ok=True)
@@ -480,7 +487,7 @@ if __name__ == "__main__":
     writer = SummaryWriter(args.log_dir)
     main(args)
 
-#python fl_qa_squad.py --algo vanilla --save_model --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --per_device_train_batch_size 24 --per_device_eval_batch_size 24 --dataset squad --log_dir log_squad_roberta --model roberta > baseline_roberta_100.txt
+#python fl_qa_squad.py --algo vanilla --save_model --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --per_device_train_batch_size 8 --per_device_eval_batch_size 8 --dataset squad --log_dir log_t5 --model t5 > baseline_t5_100.txt
 #python fl_qa_squad.py --save_model --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --per_device_train_batch_size 24 --per_device_eval_batch_size 24 --dataset squad --log_dir log_squad_distilbert --model distilbert > raffm_distilbert_squadv1_100.txt
 
 #python fl_qa_squad.py --save_model --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --per_device_train_batch_size 12 --per_device_eval_batch_size 12 --dataset squad --log_dir log_squad_bert_large --model bert-large > raffm_squad_bertlarge_100.txt

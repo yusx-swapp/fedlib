@@ -23,7 +23,7 @@ from sklearn.metrics import accuracy_score, matthews_corrcoef
 # from utils import *
 from utils.split_data import DatasetSplitter,k_shot_data
 from utils.adaptive import calculate_trainable_params,gradient_masking_extraction
-from utils import salient_parameter_prioritization, salient_submodel_extraction
+from utils import salient_parameter_prioritization, salient_submodel_extraction, EarlyStopping
 
 random_seed = 123
 
@@ -116,7 +116,8 @@ def evaluate(args, global_model, tokenized_test_dataset):
 
 def federated_learning(args, global_model, tokenized_local_datasets, tokenize_val_dataset, tokenize_test_dataset=None ):
     # global_model = DistilBertForSequenceClassification.from_pretrained(model_name, num_labels=2)
-    
+    early_stopping = EarlyStopping(patience=10, verbose=True)
+
     best_model = copy.deepcopy(global_model.to('cpu'))
     best_acc = 0
     for communication_round in range(args.num_rounds):
@@ -142,7 +143,7 @@ def federated_learning(args, global_model, tokenized_local_datasets, tokenize_va
                     local_model = copy.deepcopy(global_model)
                     total_trainable_params,total_params, percentage = calculate_trainable_params(local_model)
                 else:
-                    local_model,total_trainable_params, total_params, percentage = salient_submodel_extraction(global_model, target_model_params_size=None) #Target model params size is None for randomly sample subnetwork
+                    local_model,total_trainable_params, total_params, percentage = salient_submodel_extraction(global_model, target_model_params_size=None, zero_fill=args.zero_fill) #Target model params size is None for randomly sample subnetwork
             elif args.algo == 'vanilla':
                 local_model = copy.deepcopy(global_model)
                 total_trainable_params,total_params, percentage = calculate_trainable_params(local_model)
@@ -208,6 +209,11 @@ def federated_learning(args, global_model, tokenized_local_datasets, tokenize_va
         writer.add_scalar("val_accuracy", res, communication_round)
         print(f"Val accuracy is {res}")
         logging.info(f"Val accuracy is {res}")
+        
+        
+    
+
+
 
         if tokenize_test_dataset is not None:
             try:
@@ -222,7 +228,10 @@ def federated_learning(args, global_model, tokenized_local_datasets, tokenize_va
         if res > best_acc:
             best_acc = res
             best_model = copy.deepcopy(global_model.to('cpu'))
-        
+        early_stopping(res)
+        if early_stopping.has_converged():
+            print("Model has converged. Stopping training.")
+            break        
     return global_model,best_model
 
 
@@ -298,24 +307,27 @@ def main(args):
     tokenize_val_dataset = val_dataset.map(lambda examples: tokenize_function(examples, tokenizer, args.dataset), batched=True)
 
 
+    tokenized_train_dataset = train_dataset.map(lambda examples: tokenize_function(examples, tokenizer, args.dataset), batched=True)
 
     dash_line = "-" * 80
 
     if args.k_shot and not args.split_data:
         print(dash_line+"\nFederated learning for few-shot learning")
         logging.info(dash_line+"\nFederated learning for few-shot learning")
-        local_datasets = k_shot_data(train_dataset, args.num_clients, args.k_shot,args.dataset)
+        # local_datasets = k_shot_data(train_dataset, args.num_clients, args.k_shot,args.dataset)
+        tokenized_local_datasets=k_shot_data(tokenized_train_dataset, args.num_clients, args.k_shot,args.dataset)
     else:
         print(dash_line+"\nFederated learning")
         logging.info(dash_line+"\nFederated learning")
-        splitter = DatasetSplitter(train_dataset, seed=random_seed)
+        # splitter = DatasetSplitter(train_dataset, seed=random_seed)
+        splitter = DatasetSplitter(tokenized_train_dataset, seed=random_seed)
+        
+        tokenized_local_datasets = splitter.split(n=args.num_clients, replacement=False)
 
-        local_datasets = splitter.split(n=args.num_clients, replacement=False)
 
-
-    tokenized_local_datasets = []
-    for client_dataset in local_datasets:
-        tokenized_local_datasets.append(client_dataset.map(lambda examples: tokenize_function(examples, tokenizer, args.dataset), batched=True))
+    # tokenized_local_datasets = []
+    # for client_dataset in local_datasets:
+    #     tokenized_local_datasets.append(client_dataset.map(lambda examples: tokenize_function(examples, tokenizer, args.dataset), batched=True))
     
     global_model,best_model = federated_learning(args, global_model,tokenized_local_datasets, tokenize_val_dataset, tokenize_test_dataset=None)
 
@@ -394,6 +406,8 @@ if __name__ == "__main__":
     parser.add_argument("--learning_rate", type=float, default=2e-5)
     parser.add_argument("--model", type=str, default="distilbert", choices=["distilbert", "bert-base","roberta", "t5", 'bert-large'], help="Choose between 'distilbert', 'roberta', and 't5' models")
     parser.add_argument("--save_model", action="store_true")
+    parser.add_argument("--zero_fill", action="store_true")
+    
     args = parser.parse_args()
     
     os.makedirs(args.log_dir, exist_ok=True)
@@ -434,5 +448,14 @@ python fl_glue_spp.py --eval_lm --spp --algo raffm --split_data --num_clients 10
 
 
 python fl_glue_spp.py --spp --algo raffm --split_data --num_clients 100 --num_rounds 50 --num_local_epochs 3 --dataset rte --per_device_train_batch_size 48 --per_device_eval_batch_size 48 --model distilbert --log_dir log_glue/spp/rte > raffm_distilbert_100_rte.txt
+
+
+Ablation study:
+
+CUDA_VISIBLE_DEVICES=0,1 python fl_glue_spp.py --eval_lm --spp --algo raffm --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset sst2 --per_device_train_batch_size 12 --per_device_eval_batch_size 12 --model roberta --log_dir log_sst2 > spp_roberta_100_sst2.txt
+CUDA_VISIBLE_DEVICES=2,3 python fl_glue_spp.py --eval_lm --algo raffm --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset sst2 --per_device_train_batch_size 12 --per_device_eval_batch_size 12 --model roberta --log_dir log_sst2 > nospp_roberta_100_sst2.txt
+
+CUDA_VISIBLE_DEVICES=0,1 python fl_glue_spp.py --zero_fill --eval_lm --spp --algo raffm --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset sst2 --per_device_train_batch_size 12 --per_device_eval_batch_size 12 --model roberta --log_dir log_sst2 > zero_spp_roberta_100_sst2.txt
+CUDA_VISIBLE_DEVICES=2,3 python fl_glue_spp.py --zero_fill --eval_lm --algo raffm --split_data --num_clients 100 --num_rounds 100 --num_local_epochs 3 --dataset sst2 --per_device_train_batch_size 12 --per_device_eval_batch_size 12 --model roberta --log_dir log_sst2 > zero_nospp_roberta_100_sst2.txt
 
 """
